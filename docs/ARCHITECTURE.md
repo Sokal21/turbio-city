@@ -121,7 +121,8 @@ src/
 │   │   ├── cellState.ts     # Cell visual state calculation
 │   │   └── index.ts
 │   ├── layers/              # PixiJS layer managers
-│   │   ├── CellLayer.ts     # Cell sprites (create, update, position)
+│   │   ├── CellLayer.ts           # Cell sprites (create, update, position)
+│   │   ├── MapBackgroundLayer.ts  # Satellite tile background
 │   │   └── index.ts
 │   └── interactions/        # User interaction handlers
 │       ├── cellInteractions.ts  # Click, hover, placement logic

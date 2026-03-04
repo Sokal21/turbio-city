@@ -13,7 +13,7 @@ import { useEffect, useRef } from 'react';
 import { Application, Container } from 'pixi.js';
 import { useGameStore } from '../store';
 import { loadMap, getMap } from './mapLoader';
-import { CellLayer } from './layers';
+import { CellLayer, MapBackgroundLayer, ROSARIO_DEFAULT_CONFIG } from './layers';
 import {
   createBuildingSprite,
   updateBuildingSprite,
@@ -32,6 +32,7 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_BG_COLOR } from './visuals';
 export function GameCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
+  const mapBackgroundRef = useRef<MapBackgroundLayer | null>(null);
   const cellLayerRef = useRef<CellLayer | null>(null);
   const buildingSpritesRef = useRef<Map<string, BuildingSprite>>(new Map());
   const buildingLayerRef = useRef<Container | null>(null);
@@ -71,6 +72,12 @@ export function GameCanvas() {
 
       containerRef.current?.appendChild(app.canvas);
       appRef.current = app;
+
+      // Create map background layer (satellite tiles)
+      const mapBackground = new MapBackgroundLayer();
+      mapBackgroundRef.current = mapBackground;
+      await mapBackground.init(ROSARIO_DEFAULT_CONFIG);
+      app.stage.addChild(mapBackground.getContainer());
 
       // Create cell layer
       const cellLayer = new CellLayer();
@@ -115,6 +122,10 @@ export function GameCanvas() {
       // Cleanup cell layer
       cellLayerRef.current?.destroy();
       cellLayerRef.current = null;
+
+      // Cleanup map background
+      mapBackgroundRef.current?.destroy();
+      mapBackgroundRef.current = null;
 
       // Cleanup hovered state
       hoveredCellsRef.current.clear();

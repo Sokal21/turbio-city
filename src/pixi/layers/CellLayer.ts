@@ -144,7 +144,7 @@ export class CellLayer {
 
     sprite.background.clear();
     sprite.background.roundRect(0, 0, CELL_SIZE, CELL_SIZE, 4);
-    sprite.background.fill(colors.fill);
+    sprite.background.fill({ color: colors.fill, alpha: colors.fillAlpha });
     sprite.background.stroke({ width: 2, color: colors.stroke });
   }
 
