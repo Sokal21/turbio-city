@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { GameCanvas } from './pixi';
-import { HUD, GameControls, CellInfo, BuildMenu, ExpansionModal, UnitProductionModal } from './ui';
+import { HUD, GameControls, CellInfo, BuildMenu, ExpansionModal, UnitProductionModal, UnitPool } from './ui';
 import {
   gameLoop,
   buildingsMiddleware,
@@ -51,7 +51,10 @@ function App() {
         <GameControls />
       </header>
       <main style={styles.main}>
-        <GameCanvas />
+        <div style={styles.mapSection}>
+          <GameCanvas />
+          <UnitPool />
+        </div>
         <aside style={styles.sidebar}>
           <CellInfo />
           <BuildMenu />
@@ -87,6 +90,11 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: '24px',
     padding: '24px',
+  },
+  mapSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
   },
   sidebar: {
     display: 'flex',

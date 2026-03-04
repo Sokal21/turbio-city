@@ -19,6 +19,7 @@ export interface UnitDefinition {
   type: string;
   name: string;
   description: string;
+  emoji: string;
   levels: UnitLevelStats[];
 }
 
@@ -47,6 +48,7 @@ export const UNIT_DEFINITIONS: Units = {
     type: 'soldadito',
     name: 'Soldadito',
     description: 'Unidad basica de combate',
+    emoji: '🔫',
     levels: [
       { level: 1, attack: 5, defense: 3, speed: 1, cost: { money: 50 }, upkeep: { bullets: 1 }, heat: 1, buildTime: 5 },
       { level: 2, attack: 8, defense: 5, speed: 1, cost: { money: 100 }, upkeep: { bullets: 2 }, heat: 2, buildTime: 8 },
