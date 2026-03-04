@@ -1,24 +1,24 @@
 import { getGameState } from '../../store';
-import { getBuildingDefinition } from '../buildings';
+import { getBuildingLevelData } from '../buildings';
 import type { Middleware } from '../types';
 
 /**
  * Resources middleware - handles resource production per tick
- * Checks active buildings and adds their production
+ * Checks active resource buildings and adds their production based on level
  */
 export const resourcesMiddleware: Middleware = async (ctx, next) => {
   const state = getGameState();
-  const activeBuildings = state.getActiveBuildings();
+  const resourceBuildings = state.getResourceBuildings();
 
   let totalMoney = 0;
   let totalBullets = 0;
 
-  // Calculate production from all active buildings
-  for (const building of activeBuildings) {
-    const definition = getBuildingDefinition(building.type);
-    if (definition?.production) {
-      totalMoney += definition.production.money ?? 0;
-      totalBullets += definition.production.bullets ?? 0;
+  // Calculate production from all active resource buildings
+  for (const building of resourceBuildings) {
+    const levelData = getBuildingLevelData(building.type, building.level);
+    if (levelData?.production) {
+      totalMoney += levelData.production.money ?? 0;
+      totalBullets += levelData.production.bullets ?? 0;
     }
   }
 

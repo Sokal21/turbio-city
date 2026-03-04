@@ -1,8 +1,8 @@
 # Turbio City - Roadmap
 
-## Current Status: Phase 4 - Expansion ✓ DONE
+## Current Status: Phase 5 - Units & Combat (In Progress)
 
-Territory expansion system implemented with peaceful/violent methods, costs per cell, and modal UI.
+Building levels and unit production system implemented. Next: unit deployment and combat.
 
 ---
 
@@ -69,14 +69,51 @@ Territory expansion system implemented with peaceful/violent methods, costs per 
 
 ---
 
-## Phase 5: Units & Combat ⬅️ NEXT
-- [ ] Soldier creation (from barracks)
-- [ ] Unit rendering
-- [ ] Send soldiers to cell
+## Phase 5: Units & Combat ⬅️ IN PROGRESS
+
+### 5.1 Building Levels ✓ DONE
+- [x] Building level definitions (explicit arrays)
+- [x] Level-based production rates
+- [x] Building categories (resources vs units)
+- [x] Upgrade cost structure (upgradeCost in levels)
+- [x] Updated BuildMenu for levels
+
+### 5.2 Unit System ✓ DONE
+- [x] Unit definitions (Soldadito with 3 levels)
+- [x] Unit instance structure (stats, location, upkeep)
+- [x] Units slice (state management)
+- [x] Helper function: createUnitInstance()
+- [x] Unit ID counter management
+
+### 5.3 Unit Production ✓ DONE
+- [x] Villa Miseria building (produces Soldaditos)
+- [x] Production queue per building
+- [x] buildingsMiddleware handles production progress
+- [x] Units produced to pool on completion
+- [x] UNIT_PRODUCED event
+
+### 5.4 Unit Upkeep ✓ DONE
+- [x] unitsMiddleware for upkeep
+- [x] Only deployed units (not in pool) consume bullets
+- [x] Desertion on insufficient resources
+- [x] Heat contribution tracking
+
+### 5.5 Unit UI ⬅️ NEXT
+- [ ] Production UI (click building to queue units)
+- [ ] Unit count display in HUD
+- [ ] Pool management UI
+
+### 5.6 Unit Deployment
+- [ ] Send units from pool to cell
+- [ ] Unit rendering on map
+- [ ] Movement (instant or travel time TBD)
+
+### 5.7 Combat
 - [ ] Combat resolution (probabilistic)
 - [ ] Attack/defend mechanics
+- [ ] Losses calculation
 
-**Goal:** Soldiers that can fight
+**Goal:** Soldiers that can be produced, deployed, and fight
 
 ---
 
@@ -104,11 +141,12 @@ Territory expansion system implemented with peaceful/violent methods, costs per 
 ---
 
 ## Backlog (Future)
-- More building types (Armory, Barracks)
+- Building upgrades UI
+- More unit types
 - Villagers mechanic
 - Multiple rival gangs
 - Missions/jobs system
-- Research/upgrades
+- Research/upgrades (tech tree)
 - Events system
 - Win conditions
 - Real Rosario map overlay
@@ -119,6 +157,7 @@ Territory expansion system implemented with peaceful/violent methods, costs per 
 
 | Topic | Status | Notes |
 |-------|--------|-------|
-| More building types | To discuss | Armory, Barracks, etc. |
+| Upgrade requirements | To implement | Tech tree, building prerequisites |
 | Combat formula | To discuss | Probabilistic, details TBD |
+| Unit movement | To discuss | Instant vs travel time |
 | Save format | To discuss | localStorage? file export? |

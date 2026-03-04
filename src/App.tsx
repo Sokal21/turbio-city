@@ -5,6 +5,7 @@ import {
   gameLoop,
   buildingsMiddleware,
   resourcesMiddleware,
+  unitsMiddleware,
   eventsResolverMiddleware,
 } from './game';
 import { getGameState } from './store';
@@ -22,10 +23,12 @@ function App() {
     getGameState().initializePlayerCells(STARTING_CELLS);
 
     // Setup game loop with middlewares
-    // Order matters: buildings first (updates construction), then resources (checks active buildings)
+    // Order matters: buildings first (updates construction + unit production),
+    // then resources (checks active buildings), then units (upkeep/desertion)
     gameLoop
       .use(buildingsMiddleware)
       .use(resourcesMiddleware)
+      .use(unitsMiddleware)
       .use(eventsResolverMiddleware)
       .markInitialized();
 

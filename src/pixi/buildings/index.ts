@@ -5,6 +5,8 @@ import type { BuildingSprite } from './types';
 import { BUILDING_VISUALS } from './visuals';
 import { CELL_SIZE, CELL_GAP } from '../visuals';
 
+export type { BuildingSprite } from './types';
+
 /**
  * Calculate the pixel dimensions for a building based on its cell size
  */

@@ -1,5 +1,5 @@
 import { useGameStore } from '../store';
-import { getAllBuildingDefinitions } from '../game';
+import { getAllBuildingDefinitions, getBuildingLevelData } from '../game';
 import type { BuildingDefinition } from '../store';
 
 export function BuildMenu() {
@@ -13,13 +13,20 @@ export function BuildMenu() {
   const isInPlacementMode = placementMode?.active ?? false;
 
   const handleSelectBuilding = (building: BuildingDefinition) => {
-    if (canAfford(building.baseCost.money, building.baseCost.bullets)) {
+    const moneyCost = building.baseCost.money ?? 0;
+    const bulletsCost = building.baseCost.bullets ?? 0;
+    if (canAfford(moneyCost, bulletsCost)) {
       enterPlacementMode(building.type);
     }
   };
 
   const handleCancel = () => {
     exitPlacementMode();
+  };
+
+  // Get level 1 data for display
+  const getLevel1Data = (building: BuildingDefinition) => {
+    return getBuildingLevelData(building.type, 1);
   };
 
   return (
@@ -39,8 +46,11 @@ export function BuildMenu() {
 
       <div style={styles.buildingList}>
         {buildings.map((building) => {
-          const affordable = canAfford(building.baseCost.money, building.baseCost.bullets);
+          const moneyCost = building.baseCost.money ?? 0;
+          const bulletsCost = building.baseCost.bullets ?? 0;
+          const affordable = canAfford(moneyCost, bulletsCost);
           const isSelected = placementMode?.buildingType === building.type;
+          const level1Data = getLevel1Data(building);
 
           return (
             <div
@@ -64,16 +74,16 @@ export function BuildMenu() {
               <div style={styles.buildingCost}>
                 <span style={{
                   ...styles.costItem,
-                  color: resources.money >= building.baseCost.money ? '#68d391' : '#fc8181'
+                  color: resources.money >= moneyCost ? '#68d391' : '#fc8181'
                 }}>
-                  ${building.baseCost.money}
+                  ${moneyCost}
                 </span>
-                {building.baseCost.bullets > 0 && (
+                {bulletsCost > 0 && (
                   <span style={{
                     ...styles.costItem,
-                    color: resources.bullets >= building.baseCost.bullets ? '#68d391' : '#fc8181'
+                    color: resources.bullets >= bulletsCost ? '#68d391' : '#fc8181'
                   }}>
-                    {building.baseCost.bullets} balas
+                    {bulletsCost} balas
                   </span>
                 )}
               </div>
@@ -82,9 +92,15 @@ export function BuildMenu() {
                 <span style={styles.statItem}>
                   Tiempo: {building.buildTime}s
                 </span>
-                {building.production && (
+                {building.category === 'resources' && level1Data?.production && (
                   <span style={styles.statItem}>
-                    +{building.production.money ?? 0}$/tick
+                    +{level1Data.production.money ?? 0}$/tick
+                    {level1Data.production.bullets ? ` +${level1Data.production.bullets} balas/tick` : ''}
+                  </span>
+                )}
+                {building.category === 'units' && (
+                  <span style={styles.statItem}>
+                    Produce unidades
                   </span>
                 )}
               </div>

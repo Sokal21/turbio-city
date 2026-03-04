@@ -10,11 +10,12 @@ import type { CellLayer } from '../layers/CellLayer';
 import type { CellVisualState } from '../visuals/cellState';
 import { getGameState } from '../../store';
 import { getBuildingDefinition, mapController } from '../../game';
+import type { Buildings } from '../../game/buildings/definitions';
 
 /**
  * Get the cells that would be occupied by a building at a given position
  */
-export function getBuildingFootprint(centerCellId: string, buildingType: string): string[] {
+export function getBuildingFootprint(centerCellId: string, buildingType: keyof Buildings): string[] {
   const definition = getBuildingDefinition(buildingType);
   if (!definition) return [centerCellId];
 

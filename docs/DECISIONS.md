@@ -725,12 +725,306 @@ const BUILDING_VISUALS = {
 
 ---
 
+## 016 - Units System
+
+**Date:** 2024-XX-XX
+**Status:** Decided
+
+### Decision
+
+Units are combat entities produced by specialized buildings. They have stats, levels, cost, upkeep, and contribute to heat.
+
+### Unit Definition (Static)
+
+```typescript
+interface UnitLevelStats {
+  level: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  cost: Partial<Resources>;      // one-time cost to produce
+  upkeep: Partial<Resources>;    // per tick (only when NOT in pool)
+  heat: number;                  // contribution to global heat
+  buildTime: number;             // ticks to produce
+}
+
+interface UnitDefinition {
+  type: string;
+  name: string;
+  description: string;
+  levels: UnitLevelStats[];
+}
+```
+
+### Unit Instance (State)
+
+```typescript
+interface UnitInstance {
+  id: string;
+  type: string;
+  level: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  upkeep: Partial<Resources>;
+  heat: number;
+  location: 'pool' | string;  // 'pool' or cellId
+}
+```
+
+### First Unit: Soldadito
+
+```typescript
+{
+  type: 'soldadito',
+  name: 'Soldadito',
+  description: 'Unidad basica de combate',
+  levels: [
+    { level: 1, attack: 5, defense: 3, speed: 1, cost: { money: 50 }, upkeep: { bullets: 1 }, heat: 1, buildTime: 5 },
+    { level: 2, attack: 8, defense: 5, speed: 1, cost: { money: 100 }, upkeep: { bullets: 2 }, heat: 2, buildTime: 8 },
+    { level: 3, attack: 12, defense: 8, speed: 2, cost: { money: 200 }, upkeep: { bullets: 3 }, heat: 3, buildTime: 12 },
+  ],
+}
+```
+
+### Upkeep Rules
+
+- **Only deployed units consume upkeep** - units in the pool don't consume bullets
+- **Per tick deduction** - handled by `unitsMiddleware`
+- **Desertion on failure** - if player can't pay upkeep, a unit deserts (random for now, logic TBD)
+
+### Unit Location
+
+- **Pool**: Global reserve, not assigned to any cell, no upkeep cost
+- **Cell**: Deployed to a specific cell, consumes upkeep
+
+### Rationale
+
+- **Levels as explicit arrays**: No calculation functions, clear progression
+- **Upkeep only when deployed**: Encourages strategic deployment, pool is "free" storage
+- **Heat per unit**: Larger armies attract more attention
+
+---
+
+## 017 - Building Levels System
+
+**Date:** 2024-XX-XX
+**Status:** Decided
+
+### Decision
+
+Buildings have levels defined as explicit arrays. Each level has different production rates, unit availability, and upgrade costs.
+
+### Building Level Definition
+
+```typescript
+interface BuildingLevel {
+  level: number;
+  // For resource buildings
+  production?: Partial<Resources>;
+  // For unit buildings
+  produces?: Array<{ unit: keyof Units; maxUnitLevel: number }>;
+  // Cost to upgrade TO this level (null for level 1)
+  upgradeCost: Partial<Resources> | null;
+}
+```
+
+### Building Categories
+
+| Category | Purpose | Level Benefits |
+|----------|---------|----------------|
+| `resources` | Generate money/bullets per tick | Higher production rates |
+| `units` | Produce combat units | Higher level units available |
+
+### Resource Building Example (Bunker de Droga)
+
+```typescript
+{
+  type: 'bunker_droga',
+  category: 'resources',
+  levels: [
+    { level: 1, production: { money: 5 }, upgradeCost: null },
+    { level: 2, production: { money: 12 }, upgradeCost: { money: 800 } },
+    { level: 3, production: { money: 25 }, upgradeCost: { money: 2000 } },
+  ],
+}
+```
+
+### Unit Building Example (Villa Miseria)
+
+```typescript
+{
+  type: 'villa_miseria',
+  category: 'units',
+  levels: [
+    { level: 1, produces: [{ unit: 'soldadito', maxUnitLevel: 1 }], upgradeCost: null },
+    { level: 2, produces: [{ unit: 'soldadito', maxUnitLevel: 2 }], upgradeCost: { money: 600 } },
+    { level: 3, produces: [{ unit: 'soldadito', maxUnitLevel: 3 }], upgradeCost: { money: 1500 } },
+  ],
+}
+```
+
+### Placed Building with Level
+
+```typescript
+interface PlacedBuilding {
+  id: string;
+  type: keyof Buildings;
+  level: number;              // baked in at placement
+  cellIds: string[];
+  status: 'constructing' | 'active';
+  constructionProgress: number;
+  constructionTotal: number;
+  originalCost: Partial<Resources>;
+  productionQueue: ProductionQueueItem[];  // for unit buildings
+}
+```
+
+### Upgrade Mechanics
+
+- **Upgrade = Replace**: Building is replaced with a new structure at the new level
+- **Construction time**: Same as initial build time
+- **Requirements**: Stored separately (not in definition), checked at upgrade time
+
+### Rationale
+
+- **Explicit levels**: No formulas, clear balance, easy to tune
+- **Level baked into placement**: Simpler state, upgrade = new building
+- **Category separation**: Clear distinction between resource and unit production
+
+---
+
+## 018 - Unit Production System
+
+**Date:** 2024-XX-XX
+**Status:** Decided
+
+### Decision
+
+Unit production uses a queue system per building. Units are produced one at a time over multiple ticks.
+
+### Production Queue Item
+
+```typescript
+interface ProductionQueueItem {
+  unitType: keyof Units;
+  unitLevel: number;
+  progress: number;   // current ticks
+  total: number;      // buildTime from unit definition
+}
+```
+
+### Production Flow
+
+```
+Player clicks "Produce Soldadito Lvl 1" on Villa Miseria
+    │
+    ├── Validate: building level allows this unit/level?
+    ├── Validate: player can afford unit cost?
+    ├── Deduct cost immediately
+    └── Add to building's productionQueue
+
+Each tick (buildingsMiddleware):
+    │
+    ├── For each building with production queue:
+    │   ├── Increment progress on first queue item
+    │   └── If progress >= total:
+    │       ├── Remove from queue
+    │       ├── Create unit instance via createUnitInstance()
+    │       ├── Add unit to unitsSlice (location: 'pool')
+    │       └── Emit UNIT_PRODUCED event
+    │
+    └── Continue to next middleware
+```
+
+### Helper Function
+
+```typescript
+// Creates a unit instance from definition at specific level
+function createUnitInstance(
+  type: keyof Units,
+  level: number,
+  location: 'pool' | string = 'pool'
+): UnitInstance | null
+```
+
+### Rationale
+
+- **Queue per building**: Multiple buildings can produce simultaneously
+- **One at a time**: Simple, clear production order
+- **Cost upfront**: No surprise costs mid-production
+- **Produced to pool**: Units start in reserve, player deploys them
+
+---
+
+## 019 - Middleware Order
+
+**Date:** 2024-XX-XX
+**Status:** Decided
+
+### Decision
+
+Game loop middlewares execute in this order:
+
+```
+1. buildingsMiddleware
+   ├── Updates construction progress
+   └── Updates unit production queues
+
+2. resourcesMiddleware
+   └── Generates resources from active resource buildings
+
+3. unitsMiddleware
+   ├── Calculates total upkeep (deployed units only)
+   ├── Deducts upkeep if affordable
+   └── Triggers desertion if not affordable
+
+4. eventsResolverMiddleware
+   └── Processes accumulated events
+```
+
+### Rationale
+
+- **Buildings first**: Construction and production complete before resource checks
+- **Resources second**: New buildings produce immediately after activation
+- **Units third**: Upkeep deducted after income received
+- **Events last**: All state changes complete before event processing
+
+---
+
+## Files Created/Modified
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/game/units/definitions.ts` | Unit definitions, helper functions |
+| `src/game/units/index.ts` | Unit module exports |
+| `src/store/slices/unitsSlice.ts` | Unit state management |
+| `src/game/middlewares/unitsMiddleware.ts` | Upkeep and desertion |
+
+### Modified Files
+
+| File | Changes |
+|------|---------|
+| `src/store/types.ts` | Added unit types, building levels, production queue |
+| `src/game/buildings/definitions.ts` | Added levels, category, Villa Miseria |
+| `src/store/slices/buildingsSlice.ts` | Added level, production queue management |
+| `src/game/middlewares/buildingsMiddleware.ts` | Added unit production handling |
+| `src/game/middlewares/resourcesMiddleware.ts` | Uses building level for production |
+| `src/pixi/buildings/visuals.ts` | Added Villa Miseria visual |
+| `src/ui/BuildMenu.tsx` | Updated for new building structure |
+| `src/App.tsx` | Added unitsMiddleware to game loop |
+
+---
+
 ## Future Decisions Needed
 
-- [ ] More building types (Armory, Barracks)
-- [ ] Unit state structure
-- [ ] Soldier creation and combat formulas
+- [x] ~~Unit state structure~~ (Done - 016)
+- [x] ~~Building levels~~ (Done - 017)
+- [ ] Combat resolution formula
+- [ ] Unit deployment UI
+- [ ] Upgrade requirements (tech tree)
 - [ ] Police heat mechanics details
 - [ ] Rival gang AI behavior
 - [ ] Save/load system
-- [ ] "Villagers" mechanic (deferred)

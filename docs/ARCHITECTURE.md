@@ -94,18 +94,23 @@ src/
 │       ├── gameLoopSlice.ts   # tick, paused
 │       ├── resourcesSlice.ts  # money, bullets
 │       ├── mapSlice.ts        # cellOwnership, selection
-│       ├── buildingsSlice.ts  # buildings, placementMode
+│       ├── buildingsSlice.ts  # buildings, placementMode, production queue
+│       ├── unitsSlice.ts      # units, location, upkeep, desertion
 │       └── index.ts
 ├── game/
 │   ├── GameLoop.ts          # Middleware-based game loop
 │   ├── types.ts             # Middleware, event types
 │   ├── index.ts
 │   ├── buildings/
-│   │   ├── definitions.ts   # Building definitions (static)
+│   │   ├── definitions.ts   # Building definitions with levels (static)
+│   │   └── index.ts
+│   ├── units/
+│   │   ├── definitions.ts   # Unit definitions with levels (static)
 │   │   └── index.ts
 │   ├── middlewares/
-│   │   ├── buildingsMiddleware.ts   # Construction progress
-│   │   ├── resourcesMiddleware.ts   # Resource production
+│   │   ├── buildingsMiddleware.ts   # Construction + unit production
+│   │   ├── resourcesMiddleware.ts   # Resource production (level-based)
+│   │   ├── unitsMiddleware.ts       # Upkeep + desertion
 │   │   ├── eventsResolverMiddleware.ts
 │   │   └── index.ts
 │   └── map/
@@ -172,6 +177,7 @@ export const useGameStore = create<GameStore>()(
     ...createResourcesSlice(...args),
     ...createMapSlice(...args),
     ...createBuildingsSlice(...args),
+    ...createUnitsSlice(...args),
   }))
 );
 ```
@@ -183,7 +189,8 @@ export const useGameStore = create<GameStore>()(
 | **gameLoopSlice** | tick, paused | incrementTick, pause, resume |
 | **resourcesSlice** | resources | addResources, spendResources, canAfford |
 | **mapSlice** | cellOwnership, selectedCellId, expansionModal | selectCell, setCellOwner, openExpansionModal, closeExpansionModal |
-| **buildingsSlice** | buildings, placementMode | placeBuilding, cancelBuilding, activateBuilding |
+| **buildingsSlice** | buildings, placementMode | placeBuilding, cancelBuilding, activateBuilding, queueUnitProduction, upgradeBuilding |
+| **unitsSlice** | units | addUnit, removeUnit, moveUnitToCell, moveUnitToPool, desertUnit, getTotalUpkeep, getTotalHeat |
 
 ### Static Data
 

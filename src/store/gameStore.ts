@@ -6,12 +6,14 @@ import {
   createResourcesSlice,
   createMapSlice,
   createBuildingsSlice,
+  createUnitsSlice,
 } from './slices';
 
 import type { GameLoopSlice, GameLoopActions } from './slices';
 import type { ResourcesSlice, ResourcesActions } from './slices';
 import type { MapSlice, MapActions } from './slices';
 import type { BuildingsSlice, BuildingsActions } from './slices';
+import type { UnitsSlice, UnitsActions } from './slices';
 
 // Combined store type
 export type GameStore = GameLoopSlice &
@@ -21,7 +23,9 @@ export type GameStore = GameLoopSlice &
   MapSlice &
   MapActions &
   BuildingsSlice &
-  BuildingsActions;
+  BuildingsActions &
+  UnitsSlice &
+  UnitsActions;
 
 // Create the combined store
 export const useGameStore = create<GameStore>()(
@@ -30,6 +34,7 @@ export const useGameStore = create<GameStore>()(
     ...createResourcesSlice(...args),
     ...createMapSlice(...args),
     ...createBuildingsSlice(...args),
+    ...createUnitsSlice(...args),
   }))
 );
 

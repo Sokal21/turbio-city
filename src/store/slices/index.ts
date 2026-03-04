@@ -9,3 +9,6 @@ export type { MapSlice, MapActions } from './mapSlice';
 
 export { createBuildingsSlice } from './buildingsSlice';
 export type { BuildingsSlice, BuildingsActions } from './buildingsSlice';
+
+export { createUnitsSlice } from './unitsSlice';
+export type { UnitsSlice, UnitsActions } from './unitsSlice';
