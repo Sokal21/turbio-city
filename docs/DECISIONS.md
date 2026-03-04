@@ -448,19 +448,40 @@ Buildings are processed via middleware:
 1. **buildingsMiddleware** - updates construction progress each tick
 2. **resourcesMiddleware** - checks active buildings, generates resources
 
+### Placement Flow (Implemented)
+
+1. Player clicks building in BuildMenu → `enterPlacementMode(type)`
+2. Mouse hovers over map → cells highlight green (valid) or red (invalid)
+3. Validity check: cell owned by player AND not occupied
+4. For multi-cell buildings: each cell shows individual validity
+5. Click on valid cell(s) → `placeBuilding()` called
+6. Resources deducted, building added to state with `status: 'constructing'`
+7. Each tick → `buildingsMiddleware` increments progress
+8. When `progress >= total` → `status: 'active'`, building produces resources
+
+### Building Rendering (Implemented)
+
+- **BuildingRenderer.ts** creates PixiJS sprites for buildings
+- **Visual**: Dark blue bunker with reinforced horizontal lines and entrance
+- **Construction progress**:
+  - Green overlay fills from bottom to top
+  - Text shows "2/10" progress
+- **Active state**: Full opacity with subtle green glow border
+- Buildings rendered on separate layer above map cells
+
 ### Rationale
 
 - **Original cost stored**: Enables full refund on cancel
 - **Status tracking**: Clear construction vs active state
 - **Definitions separate from state**: Static data in code, dynamic in store
 - **Middleware processing**: Fits existing game loop architecture
+- **Separate building layer**: Clean z-ordering, buildings above cells
 
 ---
 
 ## Future Decisions Needed
 
-- [ ] Building placement UI (RTS-style preview)
-- [ ] More building types
+- [ ] More building types (Armory, Barracks)
 - [ ] Unit state structure
 - [ ] Soldier creation and combat formulas
 - [ ] Police heat mechanics details

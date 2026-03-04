@@ -7,13 +7,32 @@ export class GameLoop {
   private intervalId: number | null = null;
   private tickCount = 0;
   private running = false;
+  private initialized = false;
 
   /**
    * Register a middleware to be executed on each tick
+   * Only registers if not already initialized (prevents duplicates from React StrictMode)
    */
   use(middleware: Middleware): this {
-    this.middlewares.push(middleware);
+    if (!this.initialized) {
+      this.middlewares.push(middleware);
+    }
     return this;
+  }
+
+  /**
+   * Mark as initialized after all middlewares are added
+   */
+  markInitialized(): void {
+    this.initialized = true;
+  }
+
+  /**
+   * Clear all middlewares (for reset)
+   */
+  clearMiddlewares(): void {
+    this.middlewares = [];
+    this.initialized = false;
   }
 
   /**
@@ -76,7 +95,7 @@ export class GameLoop {
   }
 
   /**
-   * Reset the game loop
+   * Reset the game loop (keeps middlewares)
    */
   reset(): void {
     this.tickCount = 0;

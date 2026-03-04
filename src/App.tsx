@@ -26,7 +26,8 @@ function App() {
     gameLoop
       .use(buildingsMiddleware)
       .use(resourcesMiddleware)
-      .use(eventsResolverMiddleware);
+      .use(eventsResolverMiddleware)
+      .markInitialized();
 
     // Start the loop (it will wait for unpause)
     gameLoop.start();

@@ -1,8 +1,8 @@
 # Turbio City - Roadmap
 
-## Current Status: Phase 3 - Buildings (Logic)
+## Current Status: Phase 3 - Buildings ✓ DONE
 
-Foundation is complete, building system logic implemented.
+Building system fully implemented with placement, construction, and resource generation.
 
 ---
 
@@ -35,25 +35,28 @@ Foundation is complete, building system logic implemented.
 - [x] Cell selection (click handling)
 - [x] Cell ownership state
 - [x] 3x3 starting territory
+- [x] Owned cells visual distinction
 
 ---
 
-## Phase 3: Buildings ⬅️ CURRENT
+## Phase 3: Buildings ✓ DONE
 - [x] Building definitions (Bunker de Droga)
 - [x] Buildings slice (state + actions)
 - [x] Buildings middleware (construction progress)
 - [x] Resources middleware (checks active buildings)
 - [x] Placement logic (validation, cost deduction)
 - [x] Cancel with refund
-- [ ] Placement UI (RTS-style preview)
-- [ ] Building rendering on map
-- [ ] Building info panel
+- [x] Placement UI (BuildMenu)
+- [x] RTS-style placement preview (green/red highlighting)
+- [x] Building rendering on map (BuildingRenderer)
+- [x] Construction progress display (overlay + "2/10" text)
+- [x] Active building visual state
 
-**Goal:** Place buildings that generate resources
+**Goal achieved:** Place buildings that generate resources
 
 ---
 
-## Phase 4: Expansion
+## Phase 4: Expansion ⬅️ NEXT
 - [ ] Acquire adjacent cells
 - [ ] Violent vs peaceful mechanics
 - [ ] Cost calculation
@@ -99,7 +102,7 @@ Foundation is complete, building system logic implemented.
 ---
 
 ## Backlog (Future)
-- More building types
+- More building types (Armory, Barracks)
 - Villagers mechanic
 - Multiple rival gangs
 - Missions/jobs system

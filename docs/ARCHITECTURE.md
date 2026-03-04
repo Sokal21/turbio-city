@@ -110,12 +110,14 @@ src/
 │       └── index.ts
 ├── pixi/
 │   ├── GameCanvas.tsx       # PixiJS canvas React component
+│   ├── BuildingRenderer.ts  # Building sprite creation/update
 │   ├── mapLoader.ts         # Map JSON loading
 │   └── index.ts
 ├── ui/
 │   ├── HUD.tsx              # Resource display
 │   ├── CellInfo.tsx         # Selected cell details
 │   ├── GameControls.tsx     # Play/Pause/Reset
+│   ├── BuildMenu.tsx        # Building selection and placement
 │   └── index.ts
 ├── assets/
 │   └── maps/
