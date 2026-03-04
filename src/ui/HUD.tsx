@@ -9,8 +9,11 @@ export function HUD() {
   const globalHeat = useGameStore((state) => state.heat);
   const unitHeat = useGameStore((state) => state.getTotalHeat());
   const totalHeat = globalHeat + unitHeat;
+  const deficitTicks = useGameStore((state) => state.deficitTicks);
   const speed = useGameStore((state) => state.speed);
   const cycleSpeed = useGameStore((state) => state.cycleSpeed);
+
+  const ticksUntilDesertion = 60 - deficitTicks;
 
   return (
     <div style={styles.container}>
@@ -36,6 +39,12 @@ export function HUD() {
         <div style={styles.heat}>
           <span style={styles.heatIcon}>H</span>
           <span style={styles.heatValue}>{totalHeat}</span>
+        </div>
+      )}
+      {deficitTicks > 0 && (
+        <div style={styles.deficit}>
+          <span style={styles.deficitIcon}>!</span>
+          <span style={styles.deficitValue}>{ticksUntilDesertion}</span>
         </div>
       )}
       <div style={styles.rightSection}>
@@ -108,6 +117,25 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '16px',
     fontWeight: 'bold',
     color: '#fc8181',
+    fontFamily: 'monospace',
+  },
+  deficit: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  deficitIcon: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#fbd38d',
+    backgroundColor: '#744210',
+    padding: '2px 8px',
+    borderRadius: '4px',
+  },
+  deficitValue: {
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: '#fbd38d',
     fontFamily: 'monospace',
   },
   rightSection: {
