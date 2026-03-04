@@ -1,8 +1,7 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import type { PlacedBuilding } from '../store';
 import { getBuildingDefinition } from '../game';
-
-const CELL_SIZE = 60;
+import { CELL_SIZE, CELL_GAP } from './visuals';
 
 // Building colors by type
 const BUILDING_COLORS: Record<string, { base: number; accent: number }> = {
@@ -17,6 +16,27 @@ export interface BuildingSprite {
   progressOverlay: Graphics;
   progressText: Text;
   baseGraphics: Graphics;
+  width: number;
+  height: number;
+}
+
+/**
+ * Calculate the pixel dimensions for a building based on its cell size
+ */
+function getBuildingDimensions(building: PlacedBuilding): { width: number; height: number } {
+  const definition = getBuildingDefinition(building.type);
+  if (!definition) {
+    return { width: CELL_SIZE, height: CELL_SIZE };
+  }
+
+  const cellsWide = definition.size.width;
+  const cellsHigh = definition.size.height;
+
+  // Total width = cells * CELL_SIZE + gaps between cells
+  const width = cellsWide * CELL_SIZE + (cellsWide - 1) * CELL_GAP;
+  const height = cellsHigh * CELL_SIZE + (cellsHigh - 1) * CELL_GAP;
+
+  return { width, height };
 }
 
 export function createBuildingSprite(
@@ -31,26 +51,35 @@ export function createBuildingSprite(
 
   const colors = BUILDING_COLORS[building.type] || BUILDING_COLORS.default;
   const definition = getBuildingDefinition(building.type);
+  const { width, height } = getBuildingDimensions(building);
 
   // Base building graphics
   const baseGraphics = new Graphics();
 
-  // Main building body
-  baseGraphics.roundRect(4, 4, CELL_SIZE - 8, CELL_SIZE - 8, 4);
+  // Main building body - scaled to building size
+  baseGraphics.roundRect(4, 4, width - 8, height - 8, 4);
   baseGraphics.fill(colors.base);
   baseGraphics.stroke({ width: 2, color: colors.accent });
 
-  // Add some detail to make it look like a bunker
-  // Horizontal lines (ventilation/reinforcement look)
-  baseGraphics.rect(8, 16, CELL_SIZE - 16, 3);
-  baseGraphics.fill(colors.accent);
-  baseGraphics.rect(8, 28, CELL_SIZE - 16, 3);
-  baseGraphics.fill(colors.accent);
-  baseGraphics.rect(8, 40, CELL_SIZE - 16, 3);
-  baseGraphics.fill(colors.accent);
+  // Add detail lines (scaled proportionally)
+  const lineSpacing = Math.min(12, height / 5);
+  const numLines = Math.floor((height - 24) / lineSpacing);
+  for (let i = 0; i < numLines; i++) {
+    const y = 16 + i * lineSpacing;
+    baseGraphics.rect(8, y, width - 16, 3);
+    baseGraphics.fill(colors.accent);
+  }
 
-  // Small "door" or entrance
-  baseGraphics.roundRect(22, 44, 16, 12, 2);
+  // Entrance door (centered at bottom)
+  const doorWidth = Math.min(24, width / 3);
+  const doorHeight = Math.min(16, height / 4);
+  baseGraphics.roundRect(
+    (width - doorWidth) / 2,
+    height - 4 - doorHeight,
+    doorWidth,
+    doorHeight,
+    2
+  );
   baseGraphics.fill(0x1a202c);
 
   container.addChild(baseGraphics);
@@ -62,7 +91,7 @@ export function createBuildingSprite(
   // Progress text
   const textStyle = new TextStyle({
     fontFamily: 'Arial',
-    fontSize: 14,
+    fontSize: Math.min(14, height / 4),
     fontWeight: 'bold',
     fill: 0xffffff,
     stroke: { color: 0x000000, width: 3 },
@@ -73,15 +102,15 @@ export function createBuildingSprite(
     style: textStyle,
   });
   progressText.anchor.set(0.5);
-  progressText.x = CELL_SIZE / 2;
-  progressText.y = CELL_SIZE / 2;
+  progressText.x = width / 2;
+  progressText.y = height / 2;
   container.addChild(progressText);
 
-  // Building name (small, at top)
+  // Building name (centered at top)
   if (definition) {
     const nameStyle = new TextStyle({
       fontFamily: 'Arial',
-      fontSize: 8,
+      fontSize: Math.min(10, width / 8),
       fill: 0xffffff,
       stroke: { color: 0x000000, width: 2 },
     });
@@ -90,7 +119,7 @@ export function createBuildingSprite(
       style: nameStyle,
     });
     nameText.anchor.set(0.5, 0);
-    nameText.x = CELL_SIZE / 2;
+    nameText.x = width / 2;
     nameText.y = 6;
     container.addChild(nameText);
   }
@@ -101,6 +130,8 @@ export function createBuildingSprite(
     progressOverlay,
     progressText,
     baseGraphics,
+    width,
+    height,
   };
 
   // Initial update
@@ -114,15 +145,16 @@ export function updateBuildingSprite(
   building: PlacedBuilding
 ): void {
   sprite.building = building;
+  const { width, height } = sprite;
 
   if (building.status === 'constructing') {
     // Show progress
     const progress = building.constructionProgress / building.constructionTotal;
-    const fillHeight = (CELL_SIZE - 8) * progress;
-    const yStart = CELL_SIZE - 4 - fillHeight;
+    const fillHeight = (height - 8) * progress;
+    const yStart = height - 4 - fillHeight;
 
     sprite.progressOverlay.clear();
-    sprite.progressOverlay.rect(4, yStart, CELL_SIZE - 8, fillHeight);
+    sprite.progressOverlay.rect(4, yStart, width - 8, fillHeight);
     sprite.progressOverlay.fill({ color: 0x68d391, alpha: 0.4 });
 
     // Update text
@@ -138,7 +170,7 @@ export function updateBuildingSprite(
     sprite.baseGraphics.alpha = 1;
 
     // Add a subtle glow or indicator that it's active
-    sprite.progressOverlay.roundRect(4, 4, CELL_SIZE - 8, CELL_SIZE - 8, 4);
+    sprite.progressOverlay.roundRect(4, 4, width - 8, height - 8, 4);
     sprite.progressOverlay.stroke({ width: 2, color: 0x68d391, alpha: 0.5 });
   }
 }
