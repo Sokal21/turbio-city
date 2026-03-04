@@ -5,4 +5,5 @@ export {
   eventsResolverMiddleware,
 } from './middlewares';
 export * from './buildings';
+export * from './map';
 export type { Middleware, TickContext, GameEvent, NextFn } from './types';

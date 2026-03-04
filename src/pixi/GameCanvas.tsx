@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { useGameStore, getGameState } from '../store';
 import { loadMap, getMap } from './mapLoader';
-import { getBuildingDefinition } from '../game';
+import { getBuildingDefinition, mapController } from '../game';
 import {
   createBuildingSprite,
   updateBuildingSprite,
@@ -19,11 +19,13 @@ const COLORS = {
   neutral: 0x2d3748,
   owned: 0x4a5568,
   selected: 0x553c9a,
+  expandable: 0x3d4a5c,
   validPlacement: 0x276749,
   invalidPlacement: 0x9b2c2c,
   borderNeutral: 0x4a5568,
   borderOwned: 0x68d391,
   borderSelected: 0x9f7aea,
+  borderExpandable: 0x63b3ed,
   borderValid: 0x68d391,
   borderInvalid: 0xfc8181,
 };
@@ -47,6 +49,7 @@ export function GameCanvas() {
   const selectedCellId = useGameStore((state) => state.selectedCellId);
   const placementMode = useGameStore((state) => state.placementMode);
   const buildings = useGameStore((state) => state.buildings);
+  const cellOwnership = useGameStore((state) => state.cellOwnership);
 
   // Get cells that would be occupied by a building placed at centerCell
   const getBuildingCells = (centerCellId: string, buildingType: string): string[] => {
@@ -85,10 +88,11 @@ export function GameCanvas() {
     options: {
       isSelected: boolean;
       isOwned: boolean;
+      isExpandable: boolean;
       placementState: 'none' | 'valid' | 'invalid';
     }
   ) => {
-    const { isSelected, isOwned, placementState } = options;
+    const { isSelected, isOwned, isExpandable, placementState } = options;
 
     let fillColor: number;
     let strokeColor: number;
@@ -105,6 +109,9 @@ export function GameCanvas() {
     } else if (isOwned) {
       fillColor = COLORS.owned;
       strokeColor = COLORS.borderOwned;
+    } else if (isExpandable) {
+      fillColor = COLORS.expandable;
+      strokeColor = COLORS.borderExpandable;
     } else {
       fillColor = COLORS.neutral;
       strokeColor = COLORS.borderNeutral;
@@ -210,6 +217,7 @@ export function GameCanvas() {
           const currentPlacementMode = currentState.placementMode;
 
           if (currentPlacementMode?.active && currentPlacementMode.buildingType) {
+            // In building placement mode
             const buildingCells = getBuildingCells(cell.id, currentPlacementMode.buildingType);
             const allValid = buildingCells.every(isCellValidForPlacement);
 
@@ -217,7 +225,15 @@ export function GameCanvas() {
               currentState.placeBuilding(currentPlacementMode.buildingType, buildingCells);
             }
           } else {
-            currentState.selectCell(cell.id);
+            // Check if clicking an expandable cell
+            const canExpand = mapController.canExpandTo(cell.id);
+            if (canExpand.canExpand) {
+              // Open expansion modal
+              currentState.openExpansionModal(cell.id);
+            } else {
+              // Select owned cells
+              currentState.selectCell(cell.id);
+            }
           }
         });
 
@@ -237,6 +253,7 @@ export function GameCanvas() {
                 updateCellVisual(sprite, {
                   isSelected: false,
                   isOwned,
+                  isExpandable: false,
                   placementState: isValid ? 'valid' : 'invalid',
                 });
               }
@@ -252,9 +269,11 @@ export function GameCanvas() {
               const currentState = getGameState();
               const isSelected = currentState.selectedCellId === cellId;
               const isOwned = currentState.isCellOwned(cellId, 'player');
+              const canExpand = mapController.canExpandTo(cellId);
               updateCellVisual(sprite, {
                 isSelected,
                 isOwned,
+                isExpandable: canExpand.canExpand,
                 placementState: 'none',
               });
             }
@@ -298,7 +317,7 @@ export function GameCanvas() {
     };
   }, []);
 
-  // Update cell visuals when selection or placement mode changes
+  // Update cell visuals when selection, placement mode, or ownership changes
   useEffect(() => {
     if (cellSpritesRef.current.size === 0) return;
 
@@ -307,16 +326,18 @@ export function GameCanvas() {
     cellSpritesRef.current.forEach((sprite, cellId) => {
       const isSelected = cellId === selectedCellId;
       const isOwned = state.isCellOwned(cellId, 'player');
+      const canExpand = mapController.canExpandTo(cellId);
 
       if (hoveredCellsRef.current.has(cellId)) return;
 
       updateCellVisual(sprite, {
         isSelected,
         isOwned,
+        isExpandable: canExpand.canExpand,
         placementState: 'none',
       });
     });
-  }, [selectedCellId, placementMode]);
+  }, [selectedCellId, placementMode, cellOwnership]);
 
   // Update buildings when they change
   useEffect(() => {

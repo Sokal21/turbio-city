@@ -479,6 +479,78 @@ Buildings are processed via middleware:
 
 ---
 
+## 012 - Expansion System Implementation
+
+**Date:** 2024-01-XX
+**Status:** Decided
+
+### Decision
+
+Territory expansion is implemented with a modal-based UI flow:
+
+### Architecture
+
+| Component | Responsibility |
+|-----------|----------------|
+| **MapController** | Singleton that handles expansion logic, cost calculation, validation |
+| **ExpansionModal** | UI component for choosing expansion method |
+| **mapSlice** | Stores expansion modal state (isOpen, targetCellId) |
+
+### Expansion Flow
+
+1. Player clicks on unowned cell adjacent to their territory
+2. `MapController.canExpandTo()` checks:
+   - Cell exists
+   - Not already owned
+   - Adjacent to at least one player cell
+3. If expandable → `openExpansionModal(cellId)` called
+4. Modal shows two options with costs:
+   - **Peaceful**: money only (higher cost, no heat)
+   - **Violent**: money + bullets (lower money, adds heat)
+5. Player clicks option → `MapController.expandToCell(cellId, method)`
+6. Validates affordability, deducts resources, transfers ownership
+7. Modal closes, map updates visually
+
+### Map Cell Costs (in JSON)
+
+```typescript
+interface ExpansionCost {
+  peaceful: { money: number };
+  violent: { money: number; bullets: number };
+  heat: number;  // stored for future police heat system
+}
+```
+
+Costs are defined per-cell in the map JSON. Named cells (Centro, Puerto Norte, Pichincha) have higher costs.
+
+### Visual Feedback
+
+- **Expandable cells**: Blue border highlight (adjacent to player territory, not owned)
+- **Player cells**: Green border
+- **Neutral cells**: Gray border
+
+### MapController API
+
+```typescript
+class MapController {
+  getExpansionCost(cellId: string): CalculatedExpansionCost | null;
+  canExpandTo(cellId: string): { canExpand: boolean; reason?: string };
+  canAffordExpansion(cellId: string, method: ExpansionMethod): boolean;
+  expandToCell(cellId: string, method: ExpansionMethod): ExpansionResult;
+  getExpandableCells(): string[];  // all cells player can expand to
+}
+```
+
+### Rationale
+
+- **Costs in map JSON**: Different neighborhoods have different difficulty
+- **MapController singleton**: Centralizes expansion logic, keeps store actions simple
+- **Modal UI**: Clear presentation of costs and methods
+- **Visual highlighting**: Player knows which cells are expandable at a glance
+- **Heat stored but not used yet**: Infrastructure ready for police system
+
+---
+
 ## Future Decisions Needed
 
 - [ ] More building types (Armory, Barracks)

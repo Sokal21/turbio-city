@@ -9,7 +9,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     size: { width: 1, height: 1 },
     baseCost: { money: 500, bullets: 0 },
     buildTime: 10, // 10 ticks = 10 seconds
-    production: { money: 1, bullets: 0 }, // 1 money per tick when active
+    production: { money: 5, bullets: 0 }, // 1 money per tick when active
   },
 };
 

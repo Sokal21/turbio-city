@@ -103,10 +103,13 @@ src/
 │   ├── buildings/
 │   │   ├── definitions.ts   # Building definitions (static)
 │   │   └── index.ts
-│   └── middlewares/
-│       ├── buildingsMiddleware.ts   # Construction progress
-│       ├── resourcesMiddleware.ts   # Resource production
-│       ├── eventsResolverMiddleware.ts
+│   ├── middlewares/
+│   │   ├── buildingsMiddleware.ts   # Construction progress
+│   │   ├── resourcesMiddleware.ts   # Resource production
+│   │   ├── eventsResolverMiddleware.ts
+│   │   └── index.ts
+│   └── map/
+│       ├── MapController.ts         # Expansion logic, cost calculation
 │       └── index.ts
 ├── pixi/
 │   ├── GameCanvas.tsx       # PixiJS canvas React component
@@ -118,6 +121,7 @@ src/
 │   ├── CellInfo.tsx         # Selected cell details
 │   ├── GameControls.tsx     # Play/Pause/Reset
 │   ├── BuildMenu.tsx        # Building selection and placement
+│   ├── ExpansionModal.tsx   # Expansion method selection (peaceful/violent)
 │   └── index.ts
 ├── assets/
 │   └── maps/
@@ -167,13 +171,27 @@ export const useGameStore = create<GameStore>()(
 |-------|-------|-------------|
 | **gameLoopSlice** | tick, paused | incrementTick, pause, resume |
 | **resourcesSlice** | resources | addResources, spendResources, canAfford |
-| **mapSlice** | cellOwnership, selectedCellId | selectCell, setCellOwner, initializePlayerCells |
+| **mapSlice** | cellOwnership, selectedCellId, expansionModal | selectCell, setCellOwner, openExpansionModal, closeExpansionModal |
 | **buildingsSlice** | buildings, placementMode | placeBuilding, cancelBuilding, activateBuilding |
 
 ### Static Data
 
 **Map Definition** (JSON):
 ```typescript
+interface ExpansionCost {
+  peaceful: { money: number };
+  violent: { money: number; bullets: number };
+  heat: number;  // stored for future use
+}
+
+interface MapCell {
+  id: string;
+  x: number;
+  y: number;
+  name?: string;
+  expansionCost: ExpansionCost;
+}
+
 interface MapDefinition {
   id: string;
   name: string;

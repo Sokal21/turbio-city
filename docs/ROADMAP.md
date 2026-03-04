@@ -1,8 +1,8 @@
 # Turbio City - Roadmap
 
-## Current Status: Phase 3 - Buildings ✓ DONE
+## Current Status: Phase 4 - Expansion ✓ DONE
 
-Building system fully implemented with placement, construction, and resource generation.
+Territory expansion system implemented with peaceful/violent methods, costs per cell, and modal UI.
 
 ---
 
@@ -56,18 +56,20 @@ Building system fully implemented with placement, construction, and resource gen
 
 ---
 
-## Phase 4: Expansion ⬅️ NEXT
-- [ ] Acquire adjacent cells
-- [ ] Violent vs peaceful mechanics
-- [ ] Cost calculation
-- [ ] Heat system (basic)
-- [ ] Expansion UI
+## Phase 4: Expansion ✓ DONE
+- [x] Acquire adjacent cells
+- [x] Violent vs peaceful mechanics
+- [x] Cost calculation (per-cell in map JSON)
+- [x] MapController for expansion logic
+- [x] ExpansionModal UI
+- [x] Visual highlighting (blue border for expandable cells)
+- [ ] Heat system (basic) - infrastructure ready, logic pending
 
-**Goal:** Grow your territory
+**Goal achieved:** Grow your territory by clicking expandable cells
 
 ---
 
-## Phase 5: Units & Combat
+## Phase 5: Units & Combat ⬅️ NEXT
 - [ ] Soldier creation (from barracks)
 - [ ] Unit rendering
 - [ ] Send soldiers to cell

@@ -59,8 +59,14 @@ You run a local mob in **Turbio City** (inspired by Rosario, Argentina). Start s
 
 | Method | Money Cost | Bullet Cost | Heat Generated |
 |--------|------------|-------------|----------------|
-| **Peaceful** | High | None | Low |
-| **Violent** | Low | High | High |
+| **Peaceful** | High ($200-300) | None | Low (0) |
+| **Violent** | Low ($50-80) | Medium (20-30) | High (+10-15) |
+
+Expansion costs are defined per-cell in the map. Named areas (Centro, Puerto Norte, Pichincha) have higher costs.
+
+**Current Values (rosario.json):**
+- Standard cells: Peaceful $200, Violent $50 + 20 bullets, +10 heat
+- Named areas: Peaceful $250-300, Violent $60-80 + 25-30 bullets, +12-15 heat
 
 ---
 
