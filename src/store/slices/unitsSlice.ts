@@ -109,7 +109,8 @@ export const createUnitsSlice: StateCreator<
 
   getTotalUpkeep: () => {
     const { units } = get();
-    return Object.values(units).filter((u) => u.location !== 'pool').reduce(
+    // Only units in the pool consume upkeep
+    return Object.values(units).filter((u) => u.location === 'pool').reduce(
       (total, unit) => ({
         money: total.money + (unit.upkeep.money || 0),
         bullets: total.bullets + (unit.upkeep.bullets || 0),

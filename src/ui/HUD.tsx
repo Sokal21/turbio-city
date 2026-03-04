@@ -6,7 +6,11 @@ export function HUD() {
   const tick = useGameStore((state) => state.tick);
   const unitCount = useGameStore((state) => state.getUnitCount());
   const unitsInPool = useGameStore((state) => state.getUnitsInPool().length);
-  const totalHeat = useGameStore((state) => state.getTotalHeat());
+  const globalHeat = useGameStore((state) => state.heat);
+  const unitHeat = useGameStore((state) => state.getTotalHeat());
+  const totalHeat = globalHeat + unitHeat;
+  const speed = useGameStore((state) => state.speed);
+  const cycleSpeed = useGameStore((state) => state.cycleSpeed);
 
   return (
     <div style={styles.container}>
@@ -34,8 +38,13 @@ export function HUD() {
           <span style={styles.heatValue}>{totalHeat}</span>
         </div>
       )}
-      <div style={styles.tick}>
-        Tick: {tick}
+      <div style={styles.rightSection}>
+        <button style={styles.speedButton} onClick={cycleSpeed}>
+          x{speed}
+        </button>
+        <div style={styles.tick}>
+          Tick: {tick}
+        </div>
       </div>
     </div>
   );
@@ -101,9 +110,24 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#fc8181',
     fontFamily: 'monospace',
   },
+  rightSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginLeft: 'auto',
+  },
+  speedButton: {
+    padding: '6px 12px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#fff',
+    backgroundColor: '#4a5568',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
   tick: {
     fontSize: '14px',
     color: '#a0aec0',
-    marginLeft: 'auto',
   },
 };

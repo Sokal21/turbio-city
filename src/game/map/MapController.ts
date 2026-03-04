@@ -127,8 +127,8 @@ export class MapController {
         return { success: false, error: 'Not enough resources' };
       }
       state.spendResources(cost.violent.money, cost.violent.bullets);
-      // Future: add heat
-      // state.addHeat(cost.violent.heat);
+      // Add heat from violent expansion
+      state.addHeat(cost.violent.heat);
     }
 
     // Transfer ownership

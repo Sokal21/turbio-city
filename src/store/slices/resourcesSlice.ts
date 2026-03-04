@@ -9,12 +9,16 @@ const INITIAL_RESOURCES: Resources = {
 
 export interface ResourcesSlice {
   resources: Resources;
+  heat: number; // Global heat from violent actions
 }
 
 export interface ResourcesActions {
   addResources: (money: number, bullets: number) => void;
   spendResources: (money: number, bullets: number) => boolean;
   canAfford: (money: number, bullets: number) => boolean;
+  addHeat: (amount: number) => void;
+  reduceHeat: (amount: number) => void;
+  getGlobalHeat: () => number;
   resetResources: () => void;
 }
 
@@ -25,6 +29,7 @@ export const createResourcesSlice: StateCreator<
   ResourcesSlice & ResourcesActions
 > = (set, get) => ({
   resources: { ...INITIAL_RESOURCES },
+  heat: 0,
 
   addResources: (money, bullets) => {
     set((state) => {
@@ -50,9 +55,26 @@ export const createResourcesSlice: StateCreator<
     return resources.money >= money && resources.bullets >= bullets;
   },
 
+  addHeat: (amount) => {
+    set((state) => {
+      state.heat += amount;
+    });
+  },
+
+  reduceHeat: (amount) => {
+    set((state) => {
+      state.heat = Math.max(0, state.heat - amount);
+    });
+  },
+
+  getGlobalHeat: () => {
+    return get().heat;
+  },
+
   resetResources: () => {
     set((state) => {
       state.resources = { ...INITIAL_RESOURCES };
+      state.heat = 0;
     });
   },
 });
