@@ -7,6 +7,7 @@ const CELL_SIZE = 60;
 // Building colors by type
 const BUILDING_COLORS: Record<string, { base: number; accent: number }> = {
   bunker_droga: { base: 0x1a365d, accent: 0x2b6cb0 },
+  cocina_de_merca: { base: 0xa68221, accent: 0x78601d },
   default: { base: 0x2d3748, accent: 0x4a5568 },
 };
 

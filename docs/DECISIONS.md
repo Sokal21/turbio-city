@@ -551,6 +551,88 @@ class MapController {
 
 ---
 
+## 013 - PixiJS Modular Architecture
+
+**Date:** 2024-01-XX
+**Status:** Decided
+
+### Decision
+
+Refactor the PixiJS `GameCanvas` component into a modular architecture with specialized modules:
+
+```
+src/pixi/
+├── GameCanvas.tsx           # Thin orchestrator (~100 lines)
+├── visuals/
+│   ├── colors.ts            # Constants (CELL_SIZE, COLORS, canvas dims)
+│   └── cellState.ts         # Visual state calculation
+├── layers/
+│   └── CellLayer.ts         # Cell sprite management (class)
+└── interactions/
+    └── cellInteractions.ts  # Click/hover handlers
+```
+
+### Module Responsibilities
+
+| Module | Responsibility |
+|--------|----------------|
+| **GameCanvas** | Mount PixiJS app, create layers, wire state subscriptions |
+| **visuals/colors** | Centralized constants for consistent styling |
+| **visuals/cellState** | Calculate fill/stroke colors from game state |
+| **layers/CellLayer** | Create, update, destroy cell sprites |
+| **interactions/cellInteractions** | Handle clicks, hovers, placement preview |
+
+### Key Patterns
+
+**CellLayer as a class:**
+```typescript
+class CellLayer {
+  init(config): void;                    // Create all sprites
+  updateCellVisual(cellId, state): void; // Update one cell
+  updateAllCells(getState): void;        // Refresh all
+  getCellPixelPosition(cellId): Position;
+  destroy(): void;
+}
+```
+
+**State-driven visuals:**
+```typescript
+// Visual state calculated from game state
+interface CellVisualState {
+  isSelected: boolean;
+  isOwned: boolean;
+  isExpandable: boolean;
+  placementState: 'none' | 'valid' | 'invalid';
+}
+
+// Priority order determines colors
+getCellColors(state) → { fill, stroke }
+```
+
+### Rationale
+
+- **Maintainability**: GameCanvas was ~400 lines and growing
+- **Testability**: Each module can be tested independently
+- **Extensibility**: Add new layers (units, effects) without touching existing code
+- **Readability**: Smaller files, single responsibility
+- **Team-friendly**: Multiple developers can work on different modules
+
+### Adding New Features
+
+To add a new layer (e.g., units):
+1. Create `layers/UnitLayer.ts` following CellLayer pattern
+2. Add visual constants to `visuals/colors.ts`
+3. Add handlers to `interactions/unitInteractions.ts`
+4. Wire up in GameCanvas
+
+### Alternatives Considered
+
+- **React-PixiJS (@pixi/react)**: Declarative but fights imperative game logic
+- **Single file with regions**: Gets unwieldy, hard to test
+- **Hooks-only approach**: Tried, but class-based layers are cleaner for sprite management
+
+---
+
 ## Future Decisions Needed
 
 - [ ] More building types (Armory, Barracks)

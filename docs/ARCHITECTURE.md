@@ -112,10 +112,20 @@ src/
 │       ├── MapController.ts         # Expansion logic, cost calculation
 │       └── index.ts
 ├── pixi/
-│   ├── GameCanvas.tsx       # PixiJS canvas React component
+│   ├── GameCanvas.tsx       # PixiJS canvas orchestrator (thin)
 │   ├── BuildingRenderer.ts  # Building sprite creation/update
 │   ├── mapLoader.ts         # Map JSON loading
-│   └── index.ts
+│   ├── index.ts
+│   ├── visuals/             # Visual constants and state
+│   │   ├── colors.ts        # CELL_SIZE, COLORS, canvas dimensions
+│   │   ├── cellState.ts     # Cell visual state calculation
+│   │   └── index.ts
+│   ├── layers/              # PixiJS layer managers
+│   │   ├── CellLayer.ts     # Cell sprites (create, update, position)
+│   │   └── index.ts
+│   └── interactions/        # User interaction handlers
+│       ├── cellInteractions.ts  # Click, hover, placement logic
+│       └── index.ts
 ├── ui/
 │   ├── HUD.tsx              # Resource display
 │   ├── CellInfo.tsx         # Selected cell details
@@ -217,36 +227,123 @@ interface BuildingDefinition {
 }
 ```
 
-## PixiJS Integration
+## PixiJS Integration (Modular Architecture)
 
-PixiJS canvas mounted via React ref:
+The PixiJS canvas uses a **modular architecture** to keep code maintainable as the game grows.
+
+### Design Principles
+
+1. **Separation of Concerns**: Each module handles one thing well
+2. **Thin Orchestrator**: GameCanvas just wires things together
+3. **Layer Independence**: Layers can be developed/tested separately
+4. **State-Driven Visuals**: Visual state calculated from game state
+
+### Module Responsibilities
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     GameCanvas.tsx                          │
+│                   (Thin Orchestrator)                       │
+│  - Mounts PixiJS app                                        │
+│  - Creates layers                                           │
+│  - Wires up state subscriptions                             │
+│  - Delegates to modules                                     │
+└─────────────────────────────────────────────────────────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         │                    │                    │
+         ▼                    ▼                    ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│    visuals/     │  │     layers/     │  │  interactions/  │
+│                 │  │                 │  │                 │
+│ colors.ts       │  │ CellLayer.ts    │  │ cellInteractions│
+│ - COLORS        │  │ - Create cells  │  │ - Click handler │
+│ - CELL_SIZE     │  │ - Update visual │  │ - Hover handler │
+│ - Canvas dims   │  │ - Get position  │  │ - Placement     │
+│                 │  │                 │  │   preview       │
+│ cellState.ts    │  │ (Future:        │  │                 │
+│ - getCellColors │  │  UnitLayer.ts   │  │                 │
+│                 │  │  EffectLayer.ts)│  │                 │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+```
+
+### CellLayer
+
+Manages all cell sprites on the map:
 
 ```typescript
-// Simplified example
+class CellLayer {
+  init(config: CellLayerConfig): void;     // Create all cells
+  updateCellVisual(cellId, state): void;   // Update one cell
+  updateAllCells(getState): void;          // Refresh all cells
+  getCellPixelPosition(cellId): Position;  // For building placement
+  getSprite(cellId): CellSprite;           // Access sprite
+  destroy(): void;                         // Cleanup
+}
+```
+
+### Cell Visual State
+
+Visual state is calculated from game state:
+
+```typescript
+interface CellVisualState {
+  isSelected: boolean;
+  isOwned: boolean;
+  isExpandable: boolean;
+  placementState: 'none' | 'valid' | 'invalid';
+}
+
+// Priority: placement > selected > owned > expandable > neutral
+function getCellColors(state: CellVisualState): { fill, stroke }
+```
+
+### Interaction Handlers
+
+Separate handlers for different interactions:
+
+```typescript
+// Cell click - placement, expansion, or selection
+handleCellClick(cell: MapCell): void;
+
+// Hover enter - show placement preview
+handleCellEnter(cell: MapCell, ctx: InteractionContext): void;
+
+// Hover leave - restore visuals
+handleCellLeave(ctx: InteractionContext): void;
+```
+
+### Adding New Features
+
+To add a new layer (e.g., units):
+
+1. Create `layers/UnitLayer.ts` following CellLayer pattern
+2. Add visual constants to `visuals/colors.ts`
+3. Add interaction handlers to `interactions/unitInteractions.ts`
+4. Wire up in GameCanvas (create layer, subscribe to state)
+
+### Data Flow
+
+```
+State Change (Zustand)
+    │
+    ▼
+GameCanvas useEffect
+    │
+    ▼
+refreshAllCellVisuals()
+    │
+    ├──► getCellVisualState(cellId)  ← Calculate from game state
+    │
+    └──► cellLayer.updateCellVisual()  ← Apply to sprite
+```
+
+### Legacy Code (Simple Example)
+
+```typescript
+// Old approach - everything in GameCanvas
 function GameCanvas() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const appRef = useRef<PIXI.Application>();
-
-  useEffect(() => {
-    const app = new PIXI.Application({ /* config */ });
-    containerRef.current?.appendChild(app.view);
-    appRef.current = app;
-
-    // Setup layers
-    const mapLayer = new PIXI.Container();
-    const buildingLayer = new PIXI.Container();
-    // ...
-
-    app.stage.addChild(mapLayer, buildingLayer, /* ... */);
-
-    // Game loop
-    app.ticker.add((delta) => {
-      const state = useGameStore.getState();
-      // Update visuals based on state
-    });
-
-    return () => app.destroy(true);
-  }, []);
+  // 400 lines of mixed concerns...
 
   return <div ref={containerRef} />;
 }

@@ -6,3 +6,8 @@ export {
   destroyBuildingSprite,
 } from './BuildingRenderer';
 export type { BuildingSprite } from './BuildingRenderer';
+
+// Modular components
+export * from './visuals';
+export * from './layers';
+export * from './interactions';

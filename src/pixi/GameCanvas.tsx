@@ -1,143 +1,55 @@
+/**
+ * GameCanvas - Main PixiJS canvas component
+ *
+ * This component orchestrates the PixiJS application and layers.
+ * Actual rendering logic is delegated to specialized modules:
+ * - CellLayer: cell sprite management
+ * - BuildingRenderer: building sprites
+ * - cellInteractions: click/hover handlers
+ * - visuals: colors and state calculation
+ */
+
 import { useEffect, useRef } from 'react';
-import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
-import { useGameStore, getGameState } from '../store';
+import { Application, Container } from 'pixi.js';
+import { useGameStore } from '../store';
 import { loadMap, getMap } from './mapLoader';
-import { getBuildingDefinition, mapController } from '../game';
+import { CellLayer } from './layers';
 import {
   createBuildingSprite,
   updateBuildingSprite,
   destroyBuildingSprite,
   type BuildingSprite,
 } from './BuildingRenderer';
-import type { MapCell } from '../types';
-
-const CELL_SIZE = 60;
-const CELL_GAP = 4;
-
-// Colors
-const COLORS = {
-  neutral: 0x2d3748,
-  owned: 0x4a5568,
-  selected: 0x553c9a,
-  expandable: 0x3d4a5c,
-  validPlacement: 0x276749,
-  invalidPlacement: 0x9b2c2c,
-  borderNeutral: 0x4a5568,
-  borderOwned: 0x68d391,
-  borderSelected: 0x9f7aea,
-  borderExpandable: 0x63b3ed,
-  borderValid: 0x68d391,
-  borderInvalid: 0xfc8181,
-};
-
-interface CellSprite {
-  container: Container;
-  background: Graphics;
-  label: Text;
-  cell: MapCell;
-}
+import {
+  handleCellClick,
+  handleCellEnter,
+  handleCellLeave,
+  refreshAllCellVisuals,
+  getCellVisualState,
+} from './interactions';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_BG_COLOR } from './visuals';
 
 export function GameCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
-  const cellSpritesRef = useRef<Map<string, CellSprite>>(new Map());
+  const cellLayerRef = useRef<CellLayer | null>(null);
   const buildingSpritesRef = useRef<Map<string, BuildingSprite>>(new Map());
   const buildingLayerRef = useRef<Container | null>(null);
   const hoveredCellsRef = useRef<Set<string>>(new Set());
-  const mapOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Subscribe to state changes
   const selectedCellId = useGameStore((state) => state.selectedCellId);
   const placementMode = useGameStore((state) => state.placementMode);
   const buildings = useGameStore((state) => state.buildings);
   const cellOwnership = useGameStore((state) => state.cellOwnership);
 
-  // Get cells that would be occupied by a building placed at centerCell
-  const getBuildingCells = (centerCellId: string, buildingType: string): string[] => {
-    const definition = getBuildingDefinition(buildingType);
-    if (!definition) return [centerCellId];
-
-    const { width, height } = definition.size;
-    if (width === 1 && height === 1) return [centerCellId];
-
-    const [cx, cy] = centerCellId.split(',').map(Number);
-    const cells: string[] = [];
-
-    const offsetX = Math.floor(width / 2);
-    const offsetY = Math.floor(height / 2);
-
-    for (let dx = 0; dx < width; dx++) {
-      for (let dy = 0; dy < height; dy++) {
-        const x = cx - offsetX + dx;
-        const y = cy - offsetY + dy;
-        cells.push(`${x},${y}`);
-      }
-    }
-
-    return cells;
-  };
-
-  // Check if a cell is valid for placement
-  const isCellValidForPlacement = (cellId: string): boolean => {
-    const state = getGameState();
-    return state.isCellOwned(cellId, 'player') && !state.isCellOccupied(cellId);
-  };
-
-  // Update cell visuals
-  const updateCellVisual = (
-    sprite: CellSprite,
-    options: {
-      isSelected: boolean;
-      isOwned: boolean;
-      isExpandable: boolean;
-      placementState: 'none' | 'valid' | 'invalid';
-    }
-  ) => {
-    const { isSelected, isOwned, isExpandable, placementState } = options;
-
-    let fillColor: number;
-    let strokeColor: number;
-
-    if (placementState === 'valid') {
-      fillColor = COLORS.validPlacement;
-      strokeColor = COLORS.borderValid;
-    } else if (placementState === 'invalid') {
-      fillColor = COLORS.invalidPlacement;
-      strokeColor = COLORS.borderInvalid;
-    } else if (isSelected) {
-      fillColor = COLORS.selected;
-      strokeColor = COLORS.borderSelected;
-    } else if (isOwned) {
-      fillColor = COLORS.owned;
-      strokeColor = COLORS.borderOwned;
-    } else if (isExpandable) {
-      fillColor = COLORS.expandable;
-      strokeColor = COLORS.borderExpandable;
-    } else {
-      fillColor = COLORS.neutral;
-      strokeColor = COLORS.borderNeutral;
-    }
-
-    sprite.background.clear();
-    sprite.background.roundRect(0, 0, CELL_SIZE, CELL_SIZE, 4);
-    sprite.background.fill(fillColor);
-    sprite.background.stroke({ width: 2, color: strokeColor });
-  };
-
-  // Calculate pixel position for a cell
-  const getCellPixelPosition = (cellId: string): { x: number; y: number } | null => {
-    const [x, y] = cellId.split(',').map(Number);
-    return {
-      x: mapOffsetRef.current.x + x * (CELL_SIZE + CELL_GAP),
-      y: mapOffsetRef.current.y + y * (CELL_SIZE + CELL_GAP),
-    };
-  };
-
+  // Initialize PixiJS application
   useEffect(() => {
     if (!containerRef.current) return;
 
     let destroyed = false;
 
-    // Load map
+    // Load map data
     loadMap('rosario');
     const map = getMap();
 
@@ -146,9 +58,9 @@ export function GameCanvas() {
 
     const initApp = async () => {
       await app.init({
-        width: 800,
-        height: 600,
-        backgroundColor: 0x1a1a2e,
+        width: CANVAS_WIDTH,
+        height: CANVAS_HEIGHT,
+        backgroundColor: CANVAS_BG_COLOR,
         antialias: true,
       });
 
@@ -160,170 +72,57 @@ export function GameCanvas() {
       containerRef.current?.appendChild(app.canvas);
       appRef.current = app;
 
-      // Create layers
-      const mapLayer = new Container();
-      mapLayer.label = 'mapLayer';
-      app.stage.addChild(mapLayer);
+      // Create cell layer
+      const cellLayer = new CellLayer();
+      cellLayerRef.current = cellLayer;
 
+      // Create interaction context
+      const interactionCtx = {
+        cellLayer,
+        hoveredCells: hoveredCellsRef.current,
+      };
+
+      // Initialize cell layer with callbacks
+      cellLayer.init({
+        map,
+        onCellClick: (cell) => handleCellClick(cell),
+        onCellEnter: (cell) => handleCellEnter(cell, interactionCtx),
+        onCellLeave: () => handleCellLeave(interactionCtx),
+      });
+
+      // Add cell layer to stage
+      app.stage.addChild(cellLayer.getContainer());
+
+      // Create building layer (above cells)
       const buildingLayer = new Container();
       buildingLayer.label = 'buildingLayer';
       app.stage.addChild(buildingLayer);
       buildingLayerRef.current = buildingLayer;
 
-      // Calculate offset to center the map
-      const mapWidth = map.width * (CELL_SIZE + CELL_GAP);
-      const mapHeight = map.height * (CELL_SIZE + CELL_GAP);
-      const offsetX = (800 - mapWidth) / 2;
-      const offsetY = (600 - mapHeight) / 2;
-      mapOffsetRef.current = { x: offsetX, y: offsetY };
-
-      // Create cell sprites
-      const textStyle = new TextStyle({
-        fontFamily: 'Arial',
-        fontSize: 10,
-        fill: 0xffffff,
-        align: 'center',
-      });
-
-      for (const cell of map.cells) {
-        const cellContainer = new Container();
-        cellContainer.x = offsetX + cell.x * (CELL_SIZE + CELL_GAP);
-        cellContainer.y = offsetY + cell.y * (CELL_SIZE + CELL_GAP);
-        cellContainer.label = `cell-${cell.id}`;
-
-        const bg = new Graphics();
-        const state = getGameState();
-        const isOwned = state.isCellOwned(cell.id, 'player');
-        const canExpand = mapController.canExpandTo(cell.id);
-        const isExpandable = canExpand.canExpand;
-
-        let fillColor: number;
-        let strokeColor: number;
-        if (isOwned) {
-          fillColor = COLORS.owned;
-          strokeColor = COLORS.borderOwned;
-        } else if (isExpandable) {
-          fillColor = COLORS.expandable;
-          strokeColor = COLORS.borderExpandable;
-        } else {
-          fillColor = COLORS.neutral;
-          strokeColor = COLORS.borderNeutral;
-        }
-
-        bg.roundRect(0, 0, CELL_SIZE, CELL_SIZE, 4);
-        bg.fill(fillColor);
-        bg.stroke({ width: 2, color: strokeColor });
-
-        const label = new Text({
-          text: cell.name || cell.id,
-          style: textStyle,
-        });
-        label.anchor.set(0.5);
-        label.x = CELL_SIZE / 2;
-        label.y = CELL_SIZE / 2;
-
-        cellContainer.addChild(bg);
-        cellContainer.addChild(label);
-
-        cellContainer.eventMode = 'static';
-        cellContainer.cursor = 'pointer';
-
-        cellContainer.on('pointerdown', () => {
-          const currentState = getGameState();
-          const currentPlacementMode = currentState.placementMode;
-
-          if (currentPlacementMode?.active && currentPlacementMode.buildingType) {
-            // In building placement mode
-            const buildingCells = getBuildingCells(cell.id, currentPlacementMode.buildingType);
-            const allValid = buildingCells.every(isCellValidForPlacement);
-
-            if (allValid) {
-              currentState.placeBuilding(currentPlacementMode.buildingType, buildingCells);
-            }
-          } else {
-            // Check if clicking an expandable cell
-            const canExpand = mapController.canExpandTo(cell.id);
-            if (canExpand.canExpand) {
-              // Open expansion modal
-              currentState.openExpansionModal(cell.id);
-            } else {
-              // Select owned cells
-              currentState.selectCell(cell.id);
-            }
-          }
-        });
-
-        cellContainer.on('pointerenter', () => {
-          const currentState = getGameState();
-          const currentPlacementMode = currentState.placementMode;
-
-          if (currentPlacementMode?.active && currentPlacementMode.buildingType) {
-            const buildingCells = getBuildingCells(cell.id, currentPlacementMode.buildingType);
-            hoveredCellsRef.current = new Set(buildingCells);
-
-            buildingCells.forEach((cellId) => {
-              const sprite = cellSpritesRef.current.get(cellId);
-              if (sprite) {
-                const isValid = isCellValidForPlacement(cellId);
-                const isOwned = currentState.isCellOwned(cellId, 'player');
-                updateCellVisual(sprite, {
-                  isSelected: false,
-                  isOwned,
-                  isExpandable: false,
-                  placementState: isValid ? 'valid' : 'invalid',
-                });
-              }
-            });
-          }
-        });
-
-        cellContainer.on('pointerleave', () => {
-          const currentHoveredCells = hoveredCellsRef.current;
-          currentHoveredCells.forEach((cellId) => {
-            const sprite = cellSpritesRef.current.get(cellId);
-            if (sprite) {
-              const currentState = getGameState();
-              const isSelected = currentState.selectedCellId === cellId;
-              const isOwned = currentState.isCellOwned(cellId, 'player');
-              const canExpand = mapController.canExpandTo(cellId);
-              updateCellVisual(sprite, {
-                isSelected,
-                isOwned,
-                isExpandable: canExpand.canExpand,
-                placementState: 'none',
-              });
-            }
-          });
-          hoveredCellsRef.current = new Set();
-        });
-
-        mapLayer.addChild(cellContainer);
-
-        cellSpritesRef.current.set(cell.id, {
-          container: cellContainer,
-          background: bg,
-          label,
-          cell,
-        });
-      }
+      // Initial cell visual update
+      cellLayer.updateAllCells((cellId) => getCellVisualState(cellId));
     };
 
     initApp();
 
     return () => {
       destroyed = true;
-      // Copy refs before cleanup
-      const cellSprites = cellSpritesRef.current;
-      const buildingSprites = buildingSpritesRef.current;
 
-      cellSprites.clear();
-      buildingSprites.forEach((sprite) => destroyBuildingSprite(sprite));
-      buildingSprites.clear();
-      hoveredCellsRef.current = new Set();
+      // Cleanup building sprites
+      buildingSpritesRef.current.forEach((sprite) => destroyBuildingSprite(sprite));
+      buildingSpritesRef.current.clear();
+
+      // Cleanup cell layer
+      cellLayerRef.current?.destroy();
+      cellLayerRef.current = null;
+
+      // Cleanup hovered state
+      hoveredCellsRef.current.clear();
       buildingLayerRef.current = null;
 
+      // Cleanup PixiJS app
       if (appRef.current) {
-        if (appRef.current.canvas && appRef.current.canvas.parentNode) {
+        if (appRef.current.canvas?.parentNode) {
           appRef.current.canvas.parentNode.removeChild(appRef.current.canvas);
         }
         appRef.current.ticker.stop();
@@ -333,33 +132,20 @@ export function GameCanvas() {
     };
   }, []);
 
-  // Update cell visuals when selection, placement mode, or ownership changes
+  // Update cell visuals when state changes
   useEffect(() => {
-    if (cellSpritesRef.current.size === 0) return;
+    const cellLayer = cellLayerRef.current;
+    if (!cellLayer) return;
 
-    const state = getGameState();
-
-    cellSpritesRef.current.forEach((sprite, cellId) => {
-      const isSelected = cellId === selectedCellId;
-      const isOwned = state.isCellOwned(cellId, 'player');
-      const canExpand = mapController.canExpandTo(cellId);
-
-      if (hoveredCellsRef.current.has(cellId)) return;
-
-      updateCellVisual(sprite, {
-        isSelected,
-        isOwned,
-        isExpandable: canExpand.canExpand,
-        placementState: 'none',
-      });
-    });
+    refreshAllCellVisuals(cellLayer, hoveredCellsRef.current, selectedCellId);
   }, [selectedCellId, placementMode, cellOwnership]);
 
   // Update buildings when they change
   useEffect(() => {
-    if (!buildingLayerRef.current) return;
-
     const buildingLayer = buildingLayerRef.current;
+    const cellLayer = cellLayerRef.current;
+    if (!buildingLayer || !cellLayer) return;
+
     const currentBuildingIds = new Set(Object.keys(buildings));
 
     // Remove buildings that no longer exist
@@ -375,12 +161,10 @@ export function GameCanvas() {
       const existingSprite = buildingSpritesRef.current.get(building.id);
 
       if (existingSprite) {
-        // Update existing
         updateBuildingSprite(existingSprite, building);
       } else {
-        // Create new - use first cell for position
         const firstCellId = building.cellIds[0];
-        const pos = getCellPixelPosition(firstCellId);
+        const pos = cellLayer.getCellPixelPosition(firstCellId);
 
         if (pos) {
           const sprite = createBuildingSprite(building, pos.x, pos.y);
@@ -395,8 +179,8 @@ export function GameCanvas() {
     <div
       ref={containerRef}
       style={{
-        width: '800px',
-        height: '600px',
+        width: `${CANVAS_WIDTH}px`,
+        height: `${CANVAS_HEIGHT}px`,
         border: '2px solid #4a5568',
         borderRadius: '8px',
         overflow: 'hidden',

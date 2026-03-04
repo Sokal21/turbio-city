@@ -11,6 +11,15 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     buildTime: 10, // 10 ticks = 10 seconds
     production: { money: 5, bullets: 0 }, // 1 money per tick when active
   },
+  cocina_de_merca: {
+    type: 'cocina_de_merca',
+    name: 'Cocina de Merca',
+    description: 'Genera dinero cada segundo',
+    size: { width: 2, height: 2 },
+    baseCost: { money: 1000, bullets: 0 },
+    buildTime: 25, // 10 ticks = 10 seconds
+    production: { money: 15, bullets: 0 }, // 1 money per tick when active
+  },
 };
 
 /**
