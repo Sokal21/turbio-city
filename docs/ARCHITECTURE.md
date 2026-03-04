@@ -26,17 +26,22 @@
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     Zustand Store                           │
+│                   Zustand Store (Modular Slices)            │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐    │
-│  │ Resources   │ │ Game Loop   │ │ UI State            │    │
-│  │ - money     │ │ - tick      │ │ - selectedCellId    │    │
-│  │ - bullets   │ │ - paused    │ │                     │    │
+│  │ Resources   │ │ Game Loop   │ │ Map                 │    │
+│  │ - money     │ │ - tick      │ │ - cellOwnership     │    │
+│  │ - bullets   │ │ - paused    │ │ - selectedCellId    │    │
 │  └─────────────┘ └─────────────┘ └─────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │ Buildings                                           │    │
+│  │ - buildings (placed)                                │    │
+│  │ - placementMode                                     │    │
+│  └─────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────┐
-│                   Map Definition (JSON)                     │
-│  Static data: cells, adjacency, startingCell                │
+│                   Static Data                               │
+│  Map Definition (JSON)  │  Building Definitions (TS)       │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -75,93 +80,122 @@ Zustand Action (e.g., selectCell)
     └──► PixiJS reads state (visual updates on next frame)
 ```
 
-## Module Structure (Planned)
+## Module Structure (Current)
 
 ```
 src/
 ├── main.tsx                 # Entry point
-├── App.tsx                  # Root component
+├── App.tsx                  # Root component, initializes game
 ├── store/
-│   ├── gameStore.ts         # Zustand store
-│   └── types.ts             # State types
+│   ├── gameStore.ts         # Combines all slices
+│   ├── types.ts             # Shared state types
+│   ├── index.ts
+│   └── slices/
+│       ├── gameLoopSlice.ts   # tick, paused
+│       ├── resourcesSlice.ts  # money, bullets
+│       ├── mapSlice.ts        # cellOwnership, selection
+│       ├── buildingsSlice.ts  # buildings, placementMode
+│       └── index.ts
 ├── game/
-│   ├── engine.ts            # Game loop, tick management
-│   ├── economy.ts           # Resource production
-│   ├── combat.ts            # Combat resolution
-│   └── ai.ts                # Rival gang AI
+│   ├── GameLoop.ts          # Middleware-based game loop
+│   ├── types.ts             # Middleware, event types
+│   ├── index.ts
+│   ├── buildings/
+│   │   ├── definitions.ts   # Building definitions (static)
+│   │   └── index.ts
+│   └── middlewares/
+│       ├── buildingsMiddleware.ts   # Construction progress
+│       ├── resourcesMiddleware.ts   # Resource production
+│       ├── eventsResolverMiddleware.ts
+│       └── index.ts
 ├── pixi/
-│   ├── Game.tsx             # PixiJS canvas React component
-│   ├── layers/
-│   │   ├── MapLayer.ts
-│   │   ├── BuildingLayer.ts
-│   │   ├── UnitLayer.ts
-│   │   └── EffectLayer.ts
-│   └── sprites/
-│       ├── CellSprite.ts
-│       ├── BuildingSprite.ts
-│       └── UnitSprite.ts
+│   ├── GameCanvas.tsx       # PixiJS canvas React component
+│   ├── mapLoader.ts         # Map JSON loading
+│   └── index.ts
 ├── ui/
 │   ├── HUD.tsx              # Resource display
-│   ├── BuildMenu.tsx        # Building selection
 │   ├── CellInfo.tsx         # Selected cell details
-│   └── GameControls.tsx     # Pause, speed, etc.
+│   ├── GameControls.tsx     # Play/Pause/Reset
+│   └── index.ts
+├── assets/
+│   └── maps/
+│       └── rosario.json     # Map definition
 └── types/
-    ├── game.ts              # Game entity types
-    ├── map.ts               # Map/cell types
-    └── buildings.ts         # Building definitions
+    ├── map.ts               # Map types
+    └── index.ts
 ```
 
-## State Management
+## State Management (Modular Slices)
 
-### Zustand Store (Dynamic State)
+### Slice Pattern
+
+Each feature defines its own slice with state and actions:
 
 ```typescript
-interface GameStore {
-  // Game loop
-  tick: number;
-  paused: boolean;
+// Example: resourcesSlice.ts
+export const createResourcesSlice: StateCreator<...> = (set, get) => ({
+  resources: { money: 1000, bullets: 100 },
 
-  // Resources
-  resources: {
-    money: number;
-    bullets: number;
-  };
-
-  // UI
-  selectedCellId: string | null;
-
-  // Actions
-  actions: GameActions;
-}
-
-// Initial values
-const INITIAL_RESOURCES = {
-  money: 1000,
-  bullets: 100,
-};
+  addResources: (money, bullets) => {
+    set((state) => {
+      state.resources.money += money;
+      state.resources.bullets += bullets;
+    });
+  },
+  // ... more actions
+});
 ```
 
-### Map Definition (Static JSON)
+Slices are combined in gameStore.ts:
 
+```typescript
+export const useGameStore = create<GameStore>()(
+  immer((...args) => ({
+    ...createGameLoopSlice(...args),
+    ...createResourcesSlice(...args),
+    ...createMapSlice(...args),
+    ...createBuildingsSlice(...args),
+  }))
+);
+```
+
+### Current Slices
+
+| Slice | State | Key Actions |
+|-------|-------|-------------|
+| **gameLoopSlice** | tick, paused | incrementTick, pause, resume |
+| **resourcesSlice** | resources | addResources, spendResources, canAfford |
+| **mapSlice** | cellOwnership, selectedCellId | selectCell, setCellOwner, initializePlayerCells |
+| **buildingsSlice** | buildings, placementMode | placeBuilding, cancelBuilding, activateBuilding |
+
+### Static Data
+
+**Map Definition** (JSON):
 ```typescript
 interface MapDefinition {
   id: string;
   name: string;
   width: number;
   height: number;
-  cells: Array<{
-    id: string;
-    x: number;
-    y: number;
-    name?: string;
-  }>;
+  cells: MapCell[];
   adjacency: Record<string, string[]>;
   startingCell: string;
 }
 ```
 
-Map is loaded from JSON file, not stored in Zustand.
-State will be extended as we define more mechanics (buildings, units, etc.).
+**Building Definitions** (TypeScript):
+```typescript
+interface BuildingDefinition {
+  type: string;
+  name: string;
+  description: string;
+  size: { width: number; height: number };
+  baseCost: { money: number; bullets: number };
+  buildTime: number;
+  production?: { money?: number; bullets?: number };
+  prerequisites?: string[];
+}
+```
 
 ## PixiJS Integration
 
@@ -224,9 +258,9 @@ The game loop uses a **middleware chain pattern**. Each middleware:
 │                      TICK EXECUTION                         │
 │                                                             │
 │  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐ │
-│  │Resources │ → │  Units   │ → │  Combat  │ → │    AI    │ │
-│  │          │   │          │   │          │   │          │ │
-│  │ +events  │   │ +events  │   │ +events  │   │ +events  │ │
+│  │Buildings │ → │Resources │ → │  Units   │ → │  Combat  │ │
+│  │          │   │          │   │ (future) │   │ (future) │ │
+│  │ progress │   │ +events  │   │          │   │          │ │
 │  └──────────┘   └──────────┘   └──────────┘   └──────────┘ │
 │                                                             │
 │                         ctx.events accumulates              │
@@ -240,6 +274,12 @@ The game loop uses a **middleware chain pattern**. Each middleware:
 │                      └─────────────────┘                    │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Current Middleware Order
+
+1. **buildingsMiddleware** - Updates construction progress, activates completed buildings
+2. **resourcesMiddleware** - Checks active buildings, generates resource events
+3. **eventsResolverMiddleware** - Processes all events, commits state changes
 
 ### Core Types
 

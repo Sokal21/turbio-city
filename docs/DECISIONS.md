@@ -299,7 +299,7 @@ type Middleware = (ctx: TickContext, next: NextFn) => Promise<void>;
 
 ---
 
-## 010 - State Management
+## 010 - State Management (Modular Slices)
 
 **Date:** 2024-01-XX
 **Status:** Decided
@@ -308,29 +308,37 @@ type Middleware = (ctx: TickContext, next: NextFn) => Promise<void>;
 
 - **Zustand** manages all game state
 - **Immer** middleware for clean immutable updates
+- **Modular slices** - each feature defines its own state + actions
 - **Map definition** stored as separate JSON file (static data)
-- **State** only tracks dynamic/changing data
 
-### Core State Structure
+### Slice Architecture
+
+```
+src/store/
+├── gameStore.ts          # Combines all slices
+├── types.ts              # Shared types
+├── slices/
+│   ├── gameLoopSlice.ts    # tick, paused
+│   ├── resourcesSlice.ts   # money, bullets
+│   ├── mapSlice.ts         # cell ownership, selection
+│   └── buildingsSlice.ts   # buildings, placement mode
+└── index.ts
+```
+
+Each slice defines:
+- Its state shape
+- Its actions
+- Combined into one store via spread
 
 ```typescript
-interface GameStore {
-  // Game loop
-  tick: number;
-  paused: boolean;
-
-  // Resources
-  resources: {
-    money: number;
-    bullets: number;
-  };
-
-  // UI
-  selectedCellId: string | null;
-
-  // Actions
-  actions: GameActions;
-}
+export const useGameStore = create<GameStore>()(
+  immer((...args) => ({
+    ...createGameLoopSlice(...args),
+    ...createResourcesSlice(...args),
+    ...createMapSlice(...args),
+    ...createBuildingsSlice(...args),
+  }))
+);
 ```
 
 ### Map Definition (Separate JSON)
@@ -352,25 +360,107 @@ interface MapDefinition {
 }
 ```
 
-### Initial Resources
+### Initial Values
 
-| Resource | Starting Amount |
-|----------|-----------------|
+| Value | Amount |
+|-------|--------|
 | Money | 1000 |
 | Bullets | 100 |
+| Starting cells | 3x3 grid centered at 5,5 |
 
 ### Rationale
 
+- **Modular slices**: Each feature is self-contained, easy to add new features
 - **Zustand + Immer**: Simple API, works in React and PixiJS, clean mutations
 - **Map as JSON**: Static data doesn't belong in reactive state
-- **Minimal state**: Only track what changes, add more as we define mechanics
+
+---
+
+## 011 - Building System
+
+**Date:** 2024-01-XX
+**Status:** Decided
+
+### Decision
+
+Buildings are structures placed on owned cells that produce resources or units.
+
+### Building Rules
+
+| Rule | Decision |
+|------|----------|
+| Placement | Only on player-owned cells |
+| Overlapping | Not allowed |
+| Parallel builds | Yes, multiple simultaneously |
+| Flow | Select → Place → Wait |
+| Cancel | Yes, full refund |
+| Build time | Measured in ticks |
+
+### Building Definition (Static)
+
+```typescript
+interface BuildingDefinition {
+  type: string;
+  name: string;
+  description: string;
+  size: { width: number; height: number };
+  baseCost: { money: number; bullets: number };
+  buildTime: number;  // ticks
+  production?: { money?: number; bullets?: number };  // per tick when active
+  prerequisites?: string[];
+}
+```
+
+### Placed Building (State)
+
+```typescript
+interface PlacedBuilding {
+  id: string;
+  type: string;
+  cellIds: string[];           // cells it occupies
+  status: 'constructing' | 'active';
+  constructionProgress: number; // 0 to constructionTotal
+  constructionTotal: number;    // total ticks needed
+  originalCost: {              // for refund on cancel
+    money: number;
+    bullets: number;
+  };
+}
+```
+
+### First Building: Bunker de Droga
+
+```typescript
+{
+  type: 'bunker_droga',
+  name: 'Bunker de Droga',
+  description: 'Genera dinero cada segundo',
+  size: { width: 1, height: 1 },
+  baseCost: { money: 500, bullets: 0 },
+  buildTime: 10,  // 10 ticks = 10 seconds
+  production: { money: 1, bullets: 0 },  // 1 money per tick
+}
+```
+
+### Middleware Integration
+
+Buildings are processed via middleware:
+1. **buildingsMiddleware** - updates construction progress each tick
+2. **resourcesMiddleware** - checks active buildings, generates resources
+
+### Rationale
+
+- **Original cost stored**: Enables full refund on cancel
+- **Status tracking**: Clear construction vs active state
+- **Definitions separate from state**: Static data in code, dynamic in store
+- **Middleware processing**: Fits existing game loop architecture
 
 ---
 
 ## Future Decisions Needed
 
-- [ ] Cell ownership state (when we define territory mechanics)
-- [ ] Building types and costs
+- [ ] Building placement UI (RTS-style preview)
+- [ ] More building types
 - [ ] Unit state structure
 - [ ] Soldier creation and combat formulas
 - [ ] Police heat mechanics details

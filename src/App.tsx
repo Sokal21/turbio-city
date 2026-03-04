@@ -1,12 +1,30 @@
 import { useEffect } from 'react';
 import { GameCanvas } from './pixi';
 import { HUD, GameControls, CellInfo } from './ui';
-import { gameLoop, resourcesMiddleware, eventsResolverMiddleware } from './game';
+import {
+  gameLoop,
+  buildingsMiddleware,
+  resourcesMiddleware,
+  eventsResolverMiddleware,
+} from './game';
+import { getGameState } from './store';
+
+// 3x3 starting cells centered at 5,5
+const STARTING_CELLS = [
+  '4,4', '5,4', '6,4',
+  '4,5', '5,5', '6,5',
+  '4,6', '5,6', '6,6',
+];
 
 function App() {
   useEffect(() => {
+    // Initialize player's starting cells
+    getGameState().initializePlayerCells(STARTING_CELLS);
+
     // Setup game loop with middlewares
+    // Order matters: buildings first (updates construction), then resources (checks active buildings)
     gameLoop
+      .use(buildingsMiddleware)
       .use(resourcesMiddleware)
       .use(eventsResolverMiddleware);
 

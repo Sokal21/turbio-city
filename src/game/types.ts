@@ -1,8 +1,11 @@
-import type { GameStore } from '../types';
+import type { GameStore } from '../store';
 
-// Event types - will be extended as we add more mechanics
+// Event types - extended as we add more mechanics
 export type GameEvent =
   | { type: 'RESOURCE_PRODUCED'; resource: 'money' | 'bullets'; amount: number }
+  | { type: 'BUILDING_COMPLETED'; buildingId: string; buildingType: string }
+  | { type: 'BUILDING_PLACED'; buildingId: string; buildingType: string }
+  | { type: 'BUILDING_CANCELLED'; buildingId: string }
   | { type: 'TICK_COMPLETED'; tick: number };
 
 // Tick context passed through middleware chain

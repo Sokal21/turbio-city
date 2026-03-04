@@ -1,12 +1,12 @@
 # Turbio City - Roadmap
 
-## Current Status: Planning Phase
+## Current Status: Phase 3 - Buildings (Logic)
 
-We are documenting decisions and architecture before coding.
+Foundation is complete, building system logic implemented.
 
 ---
 
-## Phase 0: Planning & Setup ⬅️ CURRENT
+## Phase 0: Planning & Setup ✓ DONE
 - [x] Define game concept
 - [x] Choose tech stack (React, PixiJS, Zustand, TypeScript, Vite)
 - [x] Define graphics architecture (hybrid approach)
@@ -15,41 +15,39 @@ We are documenting decisions and architecture before coding.
 - [x] Define map system (grid cells)
 - [x] Define expansion mechanics (violent vs peaceful)
 - [x] Define game loop (middleware pattern, 1 tick/sec, events system)
-- [x] Define state management (Zustand + Immer, map as JSON)
+- [x] Define state management (modular slices)
 - [x] Document decisions
-- [ ] Define building types and costs
-- [ ] Project scaffolding
 
 ---
 
-## Phase 1: Foundation
-- [ ] Vite + React + TypeScript setup
-- [ ] PixiJS integration (canvas component)
-- [ ] Zustand store (basic structure)
-- [ ] Game loop (tick system)
-- [ ] Basic resource display (HUD)
-
-**Goal:** Running app with ticking resources
-
----
-
-## Phase 2: Map System
-- [ ] Grid rendering (cells)
-- [ ] Cell ownership visualization
-- [ ] Cell selection (click handling)
-- [ ] Camera pan/zoom (if needed)
-- [ ] Territory display
-
-**Goal:** Interactive map with selectable cells
+## Phase 1: Foundation ✓ DONE
+- [x] Vite + React + TypeScript setup
+- [x] PixiJS integration (canvas component)
+- [x] Zustand store (modular slices)
+- [x] Game loop (tick system with middleware)
+- [x] Basic resource display (HUD)
+- [x] Game controls (play/pause/reset)
 
 ---
 
-## Phase 3: Buildings
-- [ ] Building definitions (types, costs)
-- [ ] Placement system (cell → building)
-- [ ] Building rendering
-- [ ] Resource production (per-tick)
-- [ ] Building UI (selection, info panel)
+## Phase 2: Map System ✓ DONE
+- [x] Grid rendering (cells)
+- [x] Cell selection (click handling)
+- [x] Cell ownership state
+- [x] 3x3 starting territory
+
+---
+
+## Phase 3: Buildings ⬅️ CURRENT
+- [x] Building definitions (Bunker de Droga)
+- [x] Buildings slice (state + actions)
+- [x] Buildings middleware (construction progress)
+- [x] Resources middleware (checks active buildings)
+- [x] Placement logic (validation, cost deduction)
+- [x] Cancel with refund
+- [ ] Placement UI (RTS-style preview)
+- [ ] Building rendering on map
+- [ ] Building info panel
 
 **Goal:** Place buildings that generate resources
 
@@ -101,6 +99,7 @@ We are documenting decisions and architecture before coding.
 ---
 
 ## Backlog (Future)
+- More building types
 - Villagers mechanic
 - Multiple rival gangs
 - Missions/jobs system
@@ -115,7 +114,6 @@ We are documenting decisions and architecture before coding.
 
 | Topic | Status | Notes |
 |-------|--------|-------|
-| Building types | To discuss | Need full list with costs |
+| More building types | To discuss | Armory, Barracks, etc. |
 | Combat formula | To discuss | Probabilistic, details TBD |
-| Starting conditions | To discuss | Initial resources, map size |
 | Save format | To discuss | localStorage? file export? |
