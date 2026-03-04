@@ -6,8 +6,8 @@ import type { Middleware } from '../types';
  */
 export const resourcesMiddleware: Middleware = async (ctx, next) => {
   // Base income per tick (placeholder - will come from buildings later)
-  const baseMoneyPerTick = 10;
-  const baseBulletsPerTick = 1;
+  const baseMoneyPerTick = 0;
+  const baseBulletsPerTick = 0;
 
   if (baseMoneyPerTick > 0) {
     ctx.events.push({

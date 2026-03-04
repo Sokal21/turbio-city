@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
-import { useGameStore } from '../store';
+import { useGameStore, getGameActions } from '../store';
 import { loadMap, getMap } from './mapLoader';
 import type { MapCell } from '../types';
 
@@ -20,10 +20,11 @@ export function GameCanvas() {
   const cellSpritesRef = useRef<Map<string, CellSprite>>(new Map());
 
   const selectedCellId = useGameStore((state) => state.selectedCellId);
-  const selectCell = useGameStore((state) => state.actions.selectCell);
 
   useEffect(() => {
     if (!containerRef.current) return;
+
+    let destroyed = false;
 
     // Load map
     loadMap('rosario');
@@ -39,6 +40,12 @@ export function GameCanvas() {
         backgroundColor: 0x1a1a2e,
         antialias: true,
       });
+
+      // Check if component was unmounted during init
+      if (destroyed) {
+        app.destroy(true, { children: true });
+        return;
+      }
 
       containerRef.current?.appendChild(app.canvas);
       appRef.current = app;
@@ -91,7 +98,7 @@ export function GameCanvas() {
         cellContainer.eventMode = 'static';
         cellContainer.cursor = 'pointer';
         cellContainer.on('pointerdown', () => {
-          selectCell(cell.id);
+          getGameActions().selectCell(cell.id);
         });
 
         mapLayer.addChild(cellContainer);
@@ -109,15 +116,32 @@ export function GameCanvas() {
     initApp();
 
     return () => {
-      app.destroy(true);
-      appRef.current = null;
+      destroyed = true;
       cellSpritesRef.current.clear();
+      if (appRef.current) {
+        // Remove canvas from DOM first
+        if (appRef.current.canvas && appRef.current.canvas.parentNode) {
+          appRef.current.canvas.parentNode.removeChild(appRef.current.canvas);
+        }
+        // Stop the ticker
+        appRef.current.ticker.stop();
+        // Destroy stage children
+        appRef.current.stage.removeChildren();
+        appRef.current = null;
+      }
     };
-  }, [selectCell]);
+  }, []);
 
   // Update selected cell highlight
   useEffect(() => {
-    const map = getMap();
+    if (cellSpritesRef.current.size === 0) return;
+
+    let map;
+    try {
+      map = getMap();
+    } catch {
+      return; // Map not loaded yet
+    }
 
     cellSpritesRef.current.forEach((sprite, cellId) => {
       const isSelected = cellId === selectedCellId;
