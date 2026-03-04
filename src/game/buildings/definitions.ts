@@ -1,15 +1,21 @@
 import type { BuildingDefinition } from '../../store/types';
 
+export interface Buildings {
+  bunker_droga: BuildingDefinition;
+  cocina_de_merca: BuildingDefinition;
+  armeria: BuildingDefinition;
+}
 // Building definitions - static data
-export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
+// Using satisfies to preserve literal keys while validating the type
+export const BUILDING_DEFINITIONS: Buildings = {
   bunker_droga: {
     type: 'bunker_droga',
     name: 'Bunker de Droga',
     description: 'Genera dinero cada segundo',
     size: { width: 1, height: 1 },
     baseCost: { money: 500, bullets: 0 },
-    buildTime: 10, // 10 ticks = 10 seconds
-    production: { money: 5, bullets: 0 }, // 1 money per tick when active
+    buildTime: 10,
+    production: { money: 5, bullets: 0 },
   },
   cocina_de_merca: {
     type: 'cocina_de_merca',
@@ -17,15 +23,24 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     description: 'Genera dinero cada segundo',
     size: { width: 2, height: 2 },
     baseCost: { money: 1000, bullets: 0 },
-    buildTime: 25, // 10 ticks = 10 seconds
-    production: { money: 15, bullets: 0 }, // 1 money per tick when active
+    buildTime: 25,
+    production: { money: 15, bullets: 0 },
+  },
+  armeria: {
+    type: 'armeria',
+    name: 'Armeria',
+    description: 'Genera municiones cada segundo',
+    size: { width: 1, height: 1 },
+    baseCost: { money: 1000, bullets: 0 },
+    buildTime: 25,
+    production: { bullets: 10 },
   },
 };
 
 /**
  * Get a building definition by type
  */
-export function getBuildingDefinition(type: string): BuildingDefinition | undefined {
+export function getBuildingDefinition(type: keyof Buildings): BuildingDefinition {
   return BUILDING_DEFINITIONS[type];
 }
 

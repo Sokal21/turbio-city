@@ -4,3 +4,5 @@ export {
   getAllBuildingDefinitions,
   buildingExists,
 } from './definitions';
+
+export type { BuildingType } from './definitions';

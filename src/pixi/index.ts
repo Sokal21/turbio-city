@@ -4,8 +4,8 @@ export {
   createBuildingSprite,
   updateBuildingSprite,
   destroyBuildingSprite,
-} from './BuildingRenderer';
-export type { BuildingSprite } from './BuildingRenderer';
+} from './buildings';
+export type { BuildingSprite } from './buildings';
 
 // Modular components
 export * from './visuals';

@@ -1,5 +1,6 @@
 // Shared store types
 
+import type { Buildings } from "../game/buildings/definitions";
 export interface Resources {
   money: number;
   bullets: number;
@@ -20,7 +21,7 @@ export interface BuildingDefinition {
 // Placed building (in game state)
 export interface PlacedBuilding {
   id: string;
-  type: string;
+  type: keyof Buildings;
   cellIds: string[]; // cells it occupies
   status: 'constructing' | 'active';
   constructionProgress: number; // 0 to constructionTotal

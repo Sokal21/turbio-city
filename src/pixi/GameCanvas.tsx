@@ -19,7 +19,7 @@ import {
   updateBuildingSprite,
   destroyBuildingSprite,
   type BuildingSprite,
-} from './BuildingRenderer';
+} from './buildings';
 import {
   handleCellClick,
   handleCellEnter,

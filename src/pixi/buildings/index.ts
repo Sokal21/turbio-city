@@ -1,32 +1,9 @@
 import { Container, Graphics, Text, TextStyle, Ticker } from 'pixi.js';
-import type { PlacedBuilding } from '../store';
-import { getBuildingDefinition } from '../game';
-import { CELL_SIZE, CELL_GAP } from './visuals';
-
-// Building visual config by type
-const BUILDING_VISUALS: Record<string, { color: number; emoji: string }> = {
-  bunker_droga: { color: 0x38a169, emoji: '💊' },
-  cocina_de_merca: { color: 0xd69e2e, emoji: '🧪' },
-  armeria: { color: 0xe53e3e, emoji: '🔫' },
-  cuartel: { color: 0x805ad5, emoji: '🎖️' },
-  default: { color: 0x718096, emoji: '🏗️' },
-};
-
-export interface BuildingSprite {
-  container: Container;
-  building: PlacedBuilding;
-  overlay: Graphics;
-  progressBorder: Graphics;
-  emojiText: Text;
-  progressText: Text;
-  width: number;
-  height: number;
-  // Animation state
-  displayedProgress: number;
-  targetProgress: number;
-  fillRate: number;
-  tickerCallback: ((ticker: Ticker) => void) | null;
-}
+import type { PlacedBuilding } from '../../store';
+import { getBuildingDefinition } from '../../game';
+import type { BuildingSprite } from './types';
+import { BUILDING_VISUALS } from './visuals';
+import { CELL_SIZE, CELL_GAP } from '../visuals';
 
 /**
  * Calculate the pixel dimensions for a building based on its cell size
