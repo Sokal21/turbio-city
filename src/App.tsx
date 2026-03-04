@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { GameCanvas } from './pixi';
-import { HUD, GameControls, CellInfo, BuildMenu, ExpansionModal } from './ui';
+import { HUD, GameControls, CellInfo, BuildMenu, ExpansionModal, UnitProductionModal } from './ui';
 import {
   gameLoop,
   buildingsMiddleware,
@@ -55,6 +55,7 @@ function App() {
         </aside>
       </main>
       <ExpansionModal />
+      <UnitProductionModal />
     </div>
   );
 }

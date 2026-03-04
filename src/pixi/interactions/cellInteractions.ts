@@ -81,7 +81,7 @@ export interface CellInteractionContext {
 }
 
 /**
- * Handle cell click - placement, expansion, or selection
+ * Handle cell click - placement, expansion, building interaction, or selection
  */
 export function handleCellClick(cell: MapCell): void {
   const state = getGameState();
@@ -100,9 +100,22 @@ export function handleCellClick(cell: MapCell): void {
     const canExpand = mapController.canExpandTo(cell.id);
     if (canExpand.canExpand) {
       state.openExpansionModal(cell.id);
-    } else {
-      state.selectCell(cell.id);
+      return;
     }
+
+    // Check for building on this cell
+    const building = state.getBuildingAt(cell.id);
+    if (building && building.status === 'active') {
+      const definition = getBuildingDefinition(building.type);
+      if (definition.category === 'units') {
+        // Open production modal for unit buildings
+        state.openProductionModal(building.id);
+        return;
+      }
+    }
+
+    // Default: select the cell
+    state.selectCell(cell.id);
   }
 }
 

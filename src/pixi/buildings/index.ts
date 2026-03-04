@@ -35,8 +35,10 @@ function drawBuildingOverlay(sprite: BuildingSprite): void {
   overlay.clear();
   progressBorder.clear();
 
-  if (building.status === 'constructing') {
-    // Semi-transparent overlay that fills from bottom
+  const isProducing = building.status === 'active' && building.productionQueue.length > 0;
+
+  if (building.status === 'constructing' || isProducing) {
+    // Semi-transparent overlay that fills from bottom (construction or production)
     const fillHeight = height * displayedProgress;
     const yStart = height - fillHeight;
 
@@ -55,7 +57,7 @@ function drawBuildingOverlay(sprite: BuildingSprite): void {
     progressBorder.stroke({ width: 3, color: visuals.color, alpha: 0.8 });
 
   } else {
-    // Active building - full overlay
+    // Active building (idle) - full overlay
     overlay.roundRect(0, 0, width, height, 6);
     overlay.fill({ color: visuals.color, alpha: 0.4 });
 
@@ -139,9 +141,12 @@ export function createBuildingSprite(
     tickerCallback: null,
   };
 
-  // Animation ticker
+  // Animation ticker - handles both construction and production
   const tickerCallback = (ticker: Ticker) => {
-    if (sprite.building.status !== 'constructing') return;
+    const isConstructing = sprite.building.status === 'constructing';
+    const isProducing = sprite.building.status === 'active' && sprite.building.productionQueue.length > 0;
+
+    if (!isConstructing && !isProducing) return;
 
     const deltaSeconds = ticker.deltaMS / 1000;
     const step = sprite.fillRate * deltaSeconds;
@@ -171,7 +176,9 @@ export function updateBuildingSprite(
   sprite.building = building;
 
   if (building.status === 'constructing') {
-    sprite.targetProgress = building.constructionProgress / building.constructionTotal;
+    // Construction mode - use (progress + 1) / total to fill towards next tick
+    sprite.targetProgress = (building.constructionProgress + 1) / building.constructionTotal;
+    sprite.fillRate = 1 / building.constructionTotal;
 
     // Show progress text
     sprite.progressText.text = `${building.constructionProgress}/${building.constructionTotal}`;
@@ -181,8 +188,32 @@ export function updateBuildingSprite(
     sprite.emojiText.alpha = 0.5;
 
     drawBuildingOverlay(sprite);
+  } else if (building.productionQueue.length > 0) {
+    // Active and producing units - fill animation like construction
+    const currentItem = building.productionQueue[0];
+    const queueCount = building.productionQueue.length;
+
+    // Use (progress + 1) / total so we fill towards the next state
+    // At progress 0, we're filling towards 1/total (first tick)
+    // At progress (total-1), we're filling towards 100%
+    sprite.targetProgress = (currentItem.progress + 1) / currentItem.total;
+    sprite.fillRate = 1 / currentItem.total;
+
+    // Reset displayed progress when starting new unit (progress is 0)
+    if (currentItem.progress === 0) {
+      sprite.displayedProgress = 0;
+    }
+
+    // Show queue count
+    sprite.progressText.text = `x${queueCount}`;
+    sprite.progressText.visible = true;
+
+    // Full emoji while producing
+    sprite.emojiText.alpha = 1;
+
+    drawBuildingOverlay(sprite);
   } else {
-    // Complete
+    // Active building (idle)
     sprite.targetProgress = 1;
     sprite.displayedProgress = 1;
     sprite.progressText.visible = false;

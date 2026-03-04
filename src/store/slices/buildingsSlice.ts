@@ -6,9 +6,15 @@ import type { Buildings } from '../../game/buildings/definitions';
 import type { Units } from '../../game/units/definitions';
 import { getUnitLevelStats } from '../../game/units/definitions';
 
+export interface ProductionModal {
+  isOpen: boolean;
+  buildingId: string | null;
+}
+
 export interface BuildingsSlice {
   buildings: Record<string, PlacedBuilding>;
   placementMode: PlacementMode | null;
+  productionModal: ProductionModal;
 }
 
 export interface BuildingsActions {
@@ -32,12 +38,17 @@ export interface BuildingsActions {
 
   // Queries
   getBuildingAt: (cellId: string) => PlacedBuilding | undefined;
+  getBuildingById: (buildingId: string) => PlacedBuilding | undefined;
   isCellOccupied: (cellId: string) => boolean;
   getActiveBuildings: () => PlacedBuilding[];
   getConstructingBuildings: () => PlacedBuilding[];
   getUnitBuildings: () => PlacedBuilding[];
   getResourceBuildings: () => PlacedBuilding[];
   getBuildingsWithProduction: () => PlacedBuilding[];
+
+  // Production modal
+  openProductionModal: (buildingId: string) => void;
+  closeProductionModal: () => void;
 
   // Reset
   resetBuildings: () => void;
@@ -57,6 +68,7 @@ export const createBuildingsSlice: StateCreator<
 > = (set, get) => ({
   buildings: {},
   placementMode: null,
+  productionModal: { isOpen: false, buildingId: null },
 
   // Placement mode actions
   enterPlacementMode: (buildingType, level = 1) => {
@@ -316,6 +328,11 @@ export const createBuildingsSlice: StateCreator<
     return Object.values(buildings).find((b) => b.cellIds.includes(cellId));
   },
 
+  getBuildingById: (buildingId) => {
+    const { buildings } = get();
+    return buildings[buildingId];
+  },
+
   isCellOccupied: (cellId) => {
     const { buildings } = get();
     return Object.values(buildings).some((b) => b.cellIds.includes(cellId));
@@ -354,11 +371,25 @@ export const createBuildingsSlice: StateCreator<
     );
   },
 
+  // Production modal
+  openProductionModal: (buildingId) => {
+    set((state) => {
+      state.productionModal = { isOpen: true, buildingId };
+    });
+  },
+
+  closeProductionModal: () => {
+    set((state) => {
+      state.productionModal = { isOpen: false, buildingId: null };
+    });
+  },
+
   resetBuildings: () => {
     buildingIdCounter = 0;
     set((state) => {
       state.buildings = {};
       state.placementMode = null;
+      state.productionModal = { isOpen: false, buildingId: null };
     });
   },
 });
