@@ -3,25 +3,28 @@ import type { PlacedBuilding } from '../store';
 import { getBuildingDefinition } from '../game';
 import { CELL_SIZE, CELL_GAP } from './visuals';
 
-// Building colors by type
-const BUILDING_COLORS: Record<string, { base: number; accent: number }> = {
-  bunker_droga: { base: 0x1a365d, accent: 0x2b6cb0 },
-  cocina_de_merca: { base: 0xa68221, accent: 0x78601d },
-  default: { base: 0x2d3748, accent: 0x4a5568 },
+// Building visual config by type
+const BUILDING_VISUALS: Record<string, { color: number; emoji: string }> = {
+  bunker_droga: { color: 0x38a169, emoji: '💊' },
+  cocina_de_merca: { color: 0xd69e2e, emoji: '🧪' },
+  armeria: { color: 0xe53e3e, emoji: '🔫' },
+  cuartel: { color: 0x805ad5, emoji: '🎖️' },
+  default: { color: 0x718096, emoji: '🏗️' },
 };
 
 export interface BuildingSprite {
   container: Container;
   building: PlacedBuilding;
-  progressOverlay: Graphics;
+  overlay: Graphics;
+  progressBorder: Graphics;
+  emojiText: Text;
   progressText: Text;
-  baseGraphics: Graphics;
   width: number;
   height: number;
   // Animation state
-  displayedProgress: number;  // 0-1, what's currently shown
-  targetProgress: number;     // 0-1, where we're going
-  fillRate: number;           // progress per second (calculated from build time)
+  displayedProgress: number;
+  targetProgress: number;
+  fillRate: number;
   tickerCallback: ((ticker: Ticker) => void) | null;
 }
 
@@ -44,36 +47,42 @@ function getBuildingDimensions(building: PlacedBuilding): { width: number; heigh
 }
 
 /**
- * Draw the progress fill based on current animated progress
+ * Draw the building overlay and progress
  */
-function drawProgressFill(sprite: BuildingSprite): void {
-  const { width, height, displayedProgress, progressOverlay } = sprite;
+function drawBuildingOverlay(sprite: BuildingSprite): void {
+  const { width, height, displayedProgress, overlay, progressBorder, building } = sprite;
+  const visuals = BUILDING_VISUALS[building.type] || BUILDING_VISUALS.default;
 
-  progressOverlay.clear();
+  overlay.clear();
+  progressBorder.clear();
 
-  if (sprite.building.status === 'constructing') {
-    const fillHeight = (height - 8) * displayedProgress;
-    const yStart = height - 4 - fillHeight;
+  if (building.status === 'constructing') {
+    // Semi-transparent overlay that fills from bottom
+    const fillHeight = height * displayedProgress;
+    const yStart = height - fillHeight;
 
-    // Main fill
-    progressOverlay.rect(4, yStart, width - 8, fillHeight);
-    progressOverlay.fill({ color: 0x68d391, alpha: 0.4 });
+    // Background (unfilled area) - darker, more transparent
+    overlay.roundRect(0, 0, width, height, 6);
+    overlay.fill({ color: visuals.color, alpha: 0.2 });
 
-    // "Water surface" highlight at the top
-    if (fillHeight > 2) {
-      progressOverlay.rect(4, yStart, width - 8, 2);
-      progressOverlay.fill({ color: 0x9ae6b4, alpha: 0.6 });
+    // Filled area - brighter
+    if (fillHeight > 0) {
+      overlay.roundRect(0, yStart, width, fillHeight, 6);
+      overlay.fill({ color: visuals.color, alpha: 0.5 });
     }
 
-    // Add subtle wave effect using a slightly darker band
-    if (fillHeight > 6) {
-      progressOverlay.rect(4, yStart + 3, width - 8, 1);
-      progressOverlay.fill({ color: 0x48bb78, alpha: 0.3 });
-    }
+    // Progress border - animated
+    progressBorder.roundRect(0, 0, width, height, 6);
+    progressBorder.stroke({ width: 3, color: visuals.color, alpha: 0.8 });
+
   } else {
-    // Active glow
-    progressOverlay.roundRect(4, 4, width - 8, height - 8, 4);
-    progressOverlay.stroke({ width: 2, color: 0x68d391, alpha: 0.5 });
+    // Active building - full overlay
+    overlay.roundRect(0, 0, width, height, 6);
+    overlay.fill({ color: visuals.color, alpha: 0.4 });
+
+    // Glowing border
+    progressBorder.roundRect(0, 0, width, height, 6);
+    progressBorder.stroke({ width: 3, color: visuals.color, alpha: 1 });
   }
 }
 
@@ -87,48 +96,35 @@ export function createBuildingSprite(
   container.y = cellY;
   container.label = `building-${building.id}`;
 
-  const colors = BUILDING_COLORS[building.type] || BUILDING_COLORS.default;
-  const definition = getBuildingDefinition(building.type);
   const { width, height } = getBuildingDimensions(building);
+  const visuals = BUILDING_VISUALS[building.type] || BUILDING_VISUALS.default;
 
-  // Base building graphics
-  const baseGraphics = new Graphics();
+  // Color overlay
+  const overlay = new Graphics();
+  container.addChild(overlay);
 
-  baseGraphics.roundRect(4, 4, width - 8, height - 8, 4);
-  baseGraphics.fill(colors.base);
-  baseGraphics.stroke({ width: 2, color: colors.accent });
+  // Progress/active border
+  const progressBorder = new Graphics();
+  container.addChild(progressBorder);
 
-  // Detail lines
-  const lineSpacing = Math.min(12, height / 5);
-  const numLines = Math.floor((height - 24) / lineSpacing);
-  for (let i = 0; i < numLines; i++) {
-    const y = 16 + i * lineSpacing;
-    baseGraphics.rect(8, y, width - 16, 3);
-    baseGraphics.fill(colors.accent);
-  }
+  // Emoji in center
+  const emojiStyle = new TextStyle({
+    fontSize: Math.min(width, height) * 0.5,
+  });
 
-  // Entrance door
-  const doorWidth = Math.min(24, width / 3);
-  const doorHeight = Math.min(16, height / 4);
-  baseGraphics.roundRect(
-    (width - doorWidth) / 2,
-    height - 4 - doorHeight,
-    doorWidth,
-    doorHeight,
-    2
-  );
-  baseGraphics.fill(0x1a202c);
+  const emojiText = new Text({
+    text: visuals.emoji,
+    style: emojiStyle,
+  });
+  emojiText.anchor.set(0.5);
+  emojiText.x = width / 2;
+  emojiText.y = height / 2;
+  container.addChild(emojiText);
 
-  container.addChild(baseGraphics);
-
-  // Progress overlay
-  const progressOverlay = new Graphics();
-  container.addChild(progressOverlay);
-
-  // Progress text
-  const textStyle = new TextStyle({
+  // Progress text (shown during construction)
+  const progressStyle = new TextStyle({
     fontFamily: 'Arial',
-    fontSize: Math.min(14, height / 4),
+    fontSize: Math.min(12, height / 5),
     fontWeight: 'bold',
     fill: 0xffffff,
     stroke: { color: 0x000000, width: 3 },
@@ -136,44 +132,26 @@ export function createBuildingSprite(
 
   const progressText = new Text({
     text: '',
-    style: textStyle,
+    style: progressStyle,
   });
-  progressText.anchor.set(0.5);
+  progressText.anchor.set(0.5, 0);
   progressText.x = width / 2;
-  progressText.y = height / 2;
+  progressText.y = height - 16;
   container.addChild(progressText);
 
-  // Building name
-  if (definition) {
-    const nameStyle = new TextStyle({
-      fontFamily: 'Arial',
-      fontSize: Math.min(10, width / 8),
-      fill: 0xffffff,
-      stroke: { color: 0x000000, width: 2 },
-    });
-    const nameText = new Text({
-      text: definition.name,
-      style: nameStyle,
-    });
-    nameText.anchor.set(0.5, 0);
-    nameText.x = width / 2;
-    nameText.y = 6;
-    container.addChild(nameText);
-  }
-
-  // Calculate fill rate: we want to fill 100% over the total build time
-  // buildTime is in ticks, 1 tick = 1 second
+  // Calculate fill rate
   const buildTimeSeconds = building.constructionTotal;
-  const fillRate = 1 / buildTimeSeconds; // progress per second
+  const fillRate = 1 / buildTimeSeconds;
 
   const initialProgress = building.constructionProgress / building.constructionTotal;
 
   const sprite: BuildingSprite = {
     container,
     building,
-    progressOverlay,
+    overlay,
+    progressBorder,
+    emojiText,
     progressText,
-    baseGraphics,
     width,
     height,
     displayedProgress: initialProgress,
@@ -182,11 +160,10 @@ export function createBuildingSprite(
     tickerCallback: null,
   };
 
-  // Animation ticker - constant fill rate like water
+  // Animation ticker
   const tickerCallback = (ticker: Ticker) => {
     if (sprite.building.status !== 'constructing') return;
 
-    // Move at constant rate toward target (or slightly beyond for smoothness)
     const deltaSeconds = ticker.deltaMS / 1000;
     const step = sprite.fillRate * deltaSeconds;
 
@@ -195,14 +172,14 @@ export function createBuildingSprite(
         sprite.displayedProgress + step,
         sprite.targetProgress
       );
-      drawProgressFill(sprite);
+      drawBuildingOverlay(sprite);
     }
   };
 
   sprite.tickerCallback = tickerCallback;
   Ticker.shared.add(tickerCallback);
 
-  // Initial visual update
+  // Initial visual
   updateBuildingSprite(sprite, building);
 
   return sprite;
@@ -215,23 +192,26 @@ export function updateBuildingSprite(
   sprite.building = building;
 
   if (building.status === 'constructing') {
-    // Set new target - animation will fill toward it at constant rate
     sprite.targetProgress = building.constructionProgress / building.constructionTotal;
 
-    // Update text
+    // Show progress text
     sprite.progressText.text = `${building.constructionProgress}/${building.constructionTotal}`;
     sprite.progressText.visible = true;
-    sprite.baseGraphics.alpha = 0.6;
 
-    drawProgressFill(sprite);
+    // Dim emoji during construction
+    sprite.emojiText.alpha = 0.5;
+
+    drawBuildingOverlay(sprite);
   } else {
     // Complete
     sprite.targetProgress = 1;
     sprite.displayedProgress = 1;
     sprite.progressText.visible = false;
-    sprite.baseGraphics.alpha = 1;
 
-    drawProgressFill(sprite);
+    // Full emoji
+    sprite.emojiText.alpha = 1;
+
+    drawBuildingOverlay(sprite);
   }
 }
 

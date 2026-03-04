@@ -113,7 +113,7 @@ src/
 │       └── index.ts
 ├── pixi/
 │   ├── GameCanvas.tsx       # PixiJS canvas orchestrator (thin)
-│   ├── BuildingRenderer.ts  # Building sprite creation/update
+│   ├── BuildingRenderer.ts  # Building sprites (emoji + colored overlay)
 │   ├── mapLoader.ts         # Map JSON loading
 │   ├── index.ts
 │   ├── visuals/             # Visual constants and state

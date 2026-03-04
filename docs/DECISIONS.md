@@ -633,6 +633,98 @@ To add a new layer (e.g., units):
 
 ---
 
+## 014 - Satellite Map Background
+
+**Date:** 2024-01-XX
+**Status:** Decided
+
+### Decision
+
+Add real satellite imagery as the game background using tile services.
+
+### Implementation
+
+New module `MapBackgroundLayer.ts` that:
+- Fetches tiles from ESRI World Imagery (or OSM, etc.)
+- Renders them behind the cell layer
+- Configurable: lat, lng, zoom, provider, opacity
+
+```typescript
+interface MapBackgroundConfig {
+  lat: number;           // Center latitude
+  lng: number;           // Center longitude
+  zoom: number;          // 1-20, higher = more detail
+  provider: 'esri-satellite' | 'esri-street' | 'osm';
+  opacity?: number;      // 0-1
+}
+
+// Default for Rosario
+const ROSARIO_DEFAULT_CONFIG = {
+  lat: -32.9468,
+  lng: -60.6393,
+  zoom: 16,
+  provider: 'esri-satellite',
+  opacity: 0.5,
+};
+```
+
+### Layer Order
+
+1. MapBackgroundLayer (satellite tiles)
+2. CellLayer (semi-transparent cells)
+3. BuildingLayer (buildings on top)
+
+### Rationale
+
+- **Immersion**: Real Rosario streets/landmarks visible
+- **Configurable**: Easy to change location or style
+- **Non-blocking**: Tiles load async, game works without them
+
+---
+
+## 015 - Building Rendering Style (Emoji + Overlay)
+
+**Date:** 2024-01-XX
+**Status:** Decided
+
+### Decision
+
+Buildings render as a colored semi-transparent overlay + emoji, replacing detailed graphics.
+
+### Visual Style
+
+```typescript
+const BUILDING_VISUALS = {
+  bunker_droga:    { color: 0x38a169, emoji: '💊' },  // Green
+  cocina_de_merca: { color: 0xd69e2e, emoji: '🧪' },  // Yellow
+  armeria:         { color: 0xe53e3e, emoji: '🔫' },  // Red
+  cuartel:         { color: 0x805ad5, emoji: '🎖️' },  // Purple
+  default:         { color: 0x718096, emoji: '🏗️' },  // Gray
+};
+```
+
+### Construction State
+
+- **Overlay fills from bottom** (animated, smooth water-fill effect)
+- **Emoji dimmed** (50% opacity)
+- **Progress text** at bottom ("3/10")
+- **Colored border** around zone
+
+### Active State
+
+- **Full overlay** at 40% opacity (satellite shows through)
+- **Emoji full brightness**
+- **Glowing border**
+
+### Rationale
+
+- **Simplicity**: Easy to add new buildings (just color + emoji)
+- **Clarity**: Clear at a glance what each building is
+- **Visibility**: Semi-transparent overlay shows satellite/map beneath
+- **Extensible**: Can upgrade to sprites later if needed
+
+---
+
 ## Future Decisions Needed
 
 - [ ] More building types (Armory, Barracks)
