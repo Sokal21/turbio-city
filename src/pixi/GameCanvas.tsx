@@ -1,11 +1,26 @@
 import { useEffect, useRef } from 'react';
 import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
-import { useGameStore, getGameActions } from '../store';
+import { useGameStore, getGameState } from '../store';
 import { loadMap, getMap } from './mapLoader';
+import { getBuildingDefinition } from '../game';
 import type { MapCell } from '../types';
 
 const CELL_SIZE = 60;
 const CELL_GAP = 4;
+
+// Colors
+const COLORS = {
+  neutral: 0x2d3748,
+  owned: 0x4a5568,
+  selected: 0x553c9a,
+  validPlacement: 0x276749,    // Green
+  invalidPlacement: 0x9b2c2c,  // Red
+  borderNeutral: 0x4a5568,
+  borderOwned: 0x68d391,
+  borderSelected: 0x9f7aea,
+  borderValid: 0x68d391,
+  borderInvalid: 0xfc8181,
+};
 
 interface CellSprite {
   container: Container;
@@ -18,8 +33,80 @@ export function GameCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const cellSpritesRef = useRef<Map<string, CellSprite>>(new Map());
+  const hoveredCellsRef = useRef<Set<string>>(new Set());
 
   const selectedCellId = useGameStore((state) => state.selectedCellId);
+  const placementMode = useGameStore((state) => state.placementMode);
+
+  // Get cells that would be occupied by a building placed at centerCell
+  const getBuildingCells = (centerCellId: string, buildingType: string): string[] => {
+    const definition = getBuildingDefinition(buildingType);
+    if (!definition) return [centerCellId];
+
+    const { width, height } = definition.size;
+    if (width === 1 && height === 1) return [centerCellId];
+
+    const [cx, cy] = centerCellId.split(',').map(Number);
+    const cells: string[] = [];
+
+    // Calculate offset to center the building
+    const offsetX = Math.floor(width / 2);
+    const offsetY = Math.floor(height / 2);
+
+    for (let dx = 0; dx < width; dx++) {
+      for (let dy = 0; dy < height; dy++) {
+        const x = cx - offsetX + dx;
+        const y = cy - offsetY + dy;
+        cells.push(`${x},${y}`);
+      }
+    }
+
+    return cells;
+  };
+
+  // Check if a cell is valid for placement
+  const isCellValidForPlacement = (cellId: string): boolean => {
+    const state = getGameState();
+    return state.isCellOwned(cellId, 'player') && !state.isCellOccupied(cellId);
+  };
+
+  // Update cell visuals
+  const updateCellVisual = (
+    sprite: CellSprite,
+    cellId: string,
+    options: {
+      isSelected: boolean;
+      isOwned: boolean;
+      placementState: 'none' | 'valid' | 'invalid';
+    }
+  ) => {
+    const { isSelected, isOwned, placementState } = options;
+
+    let fillColor: number;
+    let strokeColor: number;
+
+    if (placementState === 'valid') {
+      fillColor = COLORS.validPlacement;
+      strokeColor = COLORS.borderValid;
+    } else if (placementState === 'invalid') {
+      fillColor = COLORS.invalidPlacement;
+      strokeColor = COLORS.borderInvalid;
+    } else if (isSelected) {
+      fillColor = COLORS.selected;
+      strokeColor = COLORS.borderSelected;
+    } else if (isOwned) {
+      fillColor = COLORS.owned;
+      strokeColor = COLORS.borderOwned;
+    } else {
+      fillColor = COLORS.neutral;
+      strokeColor = COLORS.borderNeutral;
+    }
+
+    sprite.background.clear();
+    sprite.background.roundRect(0, 0, CELL_SIZE, CELL_SIZE, 4);
+    sprite.background.fill(fillColor);
+    sprite.background.stroke({ width: 2, color: strokeColor });
+  };
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -77,10 +164,11 @@ export function GameCanvas() {
 
         // Background
         const bg = new Graphics();
-        const isStarting = cell.id === map.startingCell;
+        const state = getGameState();
+        const isOwned = state.isCellOwned(cell.id, 'player');
         bg.roundRect(0, 0, CELL_SIZE, CELL_SIZE, 4);
-        bg.fill(isStarting ? 0x4a5568 : 0x2d3748);
-        bg.stroke({ width: 2, color: isStarting ? 0x68d391 : 0x4a5568 });
+        bg.fill(isOwned ? COLORS.owned : COLORS.neutral);
+        bg.stroke({ width: 2, color: isOwned ? COLORS.borderOwned : COLORS.borderNeutral });
 
         // Label
         const label = new Text({
@@ -97,8 +185,67 @@ export function GameCanvas() {
         // Make interactive
         cellContainer.eventMode = 'static';
         cellContainer.cursor = 'pointer';
+
+        // Click handler
         cellContainer.on('pointerdown', () => {
-          getGameActions().selectCell(cell.id);
+          const currentState = getGameState();
+          const currentPlacementMode = currentState.placementMode;
+
+          if (currentPlacementMode?.active && currentPlacementMode.buildingType) {
+            // In placement mode - try to place building
+            const buildingCells = getBuildingCells(cell.id, currentPlacementMode.buildingType);
+            const allValid = buildingCells.every(isCellValidForPlacement);
+
+            if (allValid) {
+              currentState.placeBuilding(currentPlacementMode.buildingType, buildingCells);
+            }
+          } else {
+            // Normal mode - select cell
+            currentState.selectCell(cell.id);
+          }
+        });
+
+        // Hover handlers for placement preview
+        cellContainer.on('pointerenter', () => {
+          const currentState = getGameState();
+          const currentPlacementMode = currentState.placementMode;
+
+          if (currentPlacementMode?.active && currentPlacementMode.buildingType) {
+            const buildingCells = getBuildingCells(cell.id, currentPlacementMode.buildingType);
+            hoveredCellsRef.current = new Set(buildingCells);
+
+            // Update all affected cells
+            buildingCells.forEach((cellId) => {
+              const sprite = cellSpritesRef.current.get(cellId);
+              if (sprite) {
+                const isValid = isCellValidForPlacement(cellId);
+                const isOwned = currentState.isCellOwned(cellId, 'player');
+                updateCellVisual(sprite, cellId, {
+                  isSelected: false,
+                  isOwned,
+                  placementState: isValid ? 'valid' : 'invalid',
+                });
+              }
+            });
+          }
+        });
+
+        cellContainer.on('pointerleave', () => {
+          // Clear hover state for previously hovered cells
+          hoveredCellsRef.current.forEach((cellId) => {
+            const sprite = cellSpritesRef.current.get(cellId);
+            if (sprite) {
+              const currentState = getGameState();
+              const isSelected = currentState.selectedCellId === cellId;
+              const isOwned = currentState.isCellOwned(cellId, 'player');
+              updateCellVisual(sprite, cellId, {
+                isSelected,
+                isOwned,
+                placementState: 'none',
+              });
+            }
+          });
+          hoveredCellsRef.current.clear();
         });
 
         mapLayer.addChild(cellContainer);
@@ -118,44 +265,38 @@ export function GameCanvas() {
     return () => {
       destroyed = true;
       cellSpritesRef.current.clear();
+      hoveredCellsRef.current.clear();
       if (appRef.current) {
-        // Remove canvas from DOM first
         if (appRef.current.canvas && appRef.current.canvas.parentNode) {
           appRef.current.canvas.parentNode.removeChild(appRef.current.canvas);
         }
-        // Stop the ticker
         appRef.current.ticker.stop();
-        // Destroy stage children
         appRef.current.stage.removeChildren();
         appRef.current = null;
       }
     };
   }, []);
 
-  // Update selected cell highlight
+  // Update visuals when selection or placement mode changes
   useEffect(() => {
     if (cellSpritesRef.current.size === 0) return;
 
-    let map;
-    try {
-      map = getMap();
-    } catch {
-      return; // Map not loaded yet
-    }
+    const state = getGameState();
 
     cellSpritesRef.current.forEach((sprite, cellId) => {
       const isSelected = cellId === selectedCellId;
-      const isStarting = cellId === map.startingCell;
+      const isOwned = state.isCellOwned(cellId, 'player');
 
-      sprite.background.clear();
-      sprite.background.roundRect(0, 0, CELL_SIZE, CELL_SIZE, 4);
-      sprite.background.fill(isSelected ? 0x553c9a : isStarting ? 0x4a5568 : 0x2d3748);
-      sprite.background.stroke({
-        width: 2,
-        color: isSelected ? 0x9f7aea : isStarting ? 0x68d391 : 0x4a5568,
+      // Don't override hover state
+      if (hoveredCellsRef.current.has(cellId)) return;
+
+      updateCellVisual(sprite, cellId, {
+        isSelected,
+        isOwned,
+        placementState: 'none',
       });
     });
-  }, [selectedCellId]);
+  }, [selectedCellId, placementMode]);
 
   return (
     <div
