@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { GameCanvas } from './pixi';
-import { HUD, GameControls, CellInfo } from './ui';
+import { HUD, GameControls, CellInfo, BuildMenu } from './ui';
 import {
   gameLoop,
   buildingsMiddleware,
@@ -47,6 +47,7 @@ function App() {
         <GameCanvas />
         <aside style={styles.sidebar}>
           <CellInfo />
+          <BuildMenu />
         </aside>
       </main>
     </div>

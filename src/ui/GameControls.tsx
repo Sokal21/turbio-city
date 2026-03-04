@@ -3,9 +3,12 @@ import { gameLoop } from '../game';
 
 export function GameControls() {
   const paused = useGameStore((state) => state.paused);
-  const pause = useGameStore((state) => state.actions.pause);
-  const resume = useGameStore((state) => state.actions.resume);
-  const reset = useGameStore((state) => state.actions.reset);
+  const pause = useGameStore((state) => state.pause);
+  const resume = useGameStore((state) => state.resume);
+  const resetGameLoop = useGameStore((state) => state.resetGameLoop);
+  const resetResources = useGameStore((state) => state.resetResources);
+  const resetBuildings = useGameStore((state) => state.resetBuildings);
+  const resetMap = useGameStore((state) => state.resetMap);
 
   const handlePlayPause = () => {
     if (paused) {
@@ -21,7 +24,10 @@ export function GameControls() {
   const handleReset = () => {
     gameLoop.stop();
     gameLoop.reset();
-    reset();
+    resetGameLoop();
+    resetResources();
+    resetBuildings();
+    resetMap();
   };
 
   return (
