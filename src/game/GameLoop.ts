@@ -46,7 +46,7 @@ export class GameLoop {
     await next();
 
     // Update tick count in store
-    getGameActions().tick();
+    getGameActions().incrementTick();
   }
 
   /**
