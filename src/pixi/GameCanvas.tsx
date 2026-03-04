@@ -194,9 +194,25 @@ export function GameCanvas() {
         const bg = new Graphics();
         const state = getGameState();
         const isOwned = state.isCellOwned(cell.id, 'player');
+        const canExpand = mapController.canExpandTo(cell.id);
+        const isExpandable = canExpand.canExpand;
+
+        let fillColor: number;
+        let strokeColor: number;
+        if (isOwned) {
+          fillColor = COLORS.owned;
+          strokeColor = COLORS.borderOwned;
+        } else if (isExpandable) {
+          fillColor = COLORS.expandable;
+          strokeColor = COLORS.borderExpandable;
+        } else {
+          fillColor = COLORS.neutral;
+          strokeColor = COLORS.borderNeutral;
+        }
+
         bg.roundRect(0, 0, CELL_SIZE, CELL_SIZE, 4);
-        bg.fill(isOwned ? COLORS.owned : COLORS.neutral);
-        bg.stroke({ width: 2, color: isOwned ? COLORS.borderOwned : COLORS.borderNeutral });
+        bg.fill(fillColor);
+        bg.stroke({ width: 2, color: strokeColor });
 
         const label = new Text({
           text: cell.name || cell.id,
