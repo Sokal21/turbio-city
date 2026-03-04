@@ -23,8 +23,11 @@ function App() {
     getGameState().initializePlayerCells(STARTING_CELLS);
 
     // Setup game loop with middlewares
-    // Order matters: buildings first (updates construction + unit production),
-    // then resources (checks active buildings), then units (upkeep/desertion)
+    // Order matters:
+    // 1. buildings - updates construction + unit production
+    // 2. resources - calculates production, deducts upkeep, handles desertion
+    // 3. units - placeholder for future unit logic
+    // 4. eventsResolver - applies resource changes to state
     gameLoop
       .use(buildingsMiddleware)
       .use(resourcesMiddleware)

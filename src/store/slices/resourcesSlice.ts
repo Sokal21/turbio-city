@@ -10,6 +10,7 @@ const INITIAL_RESOURCES: Resources = {
 export interface ResourcesSlice {
   resources: Resources;
   heat: number; // Global heat from violent actions
+  deficitTicks: number; // Ticks spent in deficit (upkeep > production)
 }
 
 export interface ResourcesActions {
@@ -19,6 +20,8 @@ export interface ResourcesActions {
   addHeat: (amount: number) => void;
   reduceHeat: (amount: number) => void;
   getGlobalHeat: () => number;
+  incrementDeficitTicks: () => number; // Returns new count
+  resetDeficitTicks: () => void;
   resetResources: () => void;
 }
 
@@ -30,6 +33,7 @@ export const createResourcesSlice: StateCreator<
 > = (set, get) => ({
   resources: { ...INITIAL_RESOURCES },
   heat: 0,
+  deficitTicks: 0,
 
   addResources: (money, bullets) => {
     set((state) => {
@@ -71,10 +75,26 @@ export const createResourcesSlice: StateCreator<
     return get().heat;
   },
 
+  incrementDeficitTicks: () => {
+    let newCount = 0;
+    set((state) => {
+      state.deficitTicks += 1;
+      newCount = state.deficitTicks;
+    });
+    return newCount;
+  },
+
+  resetDeficitTicks: () => {
+    set((state) => {
+      state.deficitTicks = 0;
+    });
+  },
+
   resetResources: () => {
     set((state) => {
       state.resources = { ...INITIAL_RESOURCES };
       state.heat = 0;
+      state.deficitTicks = 0;
     });
   },
 });

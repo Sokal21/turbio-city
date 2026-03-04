@@ -1,6 +1,7 @@
 import { Container, Graphics, Text, TextStyle, Ticker } from 'pixi.js';
 import type { PlacedBuilding } from '../../store';
 import { getBuildingDefinition } from '../../game';
+import { getGameState } from '../../store';
 import type { BuildingSprite } from './types';
 import { BUILDING_VISUALS } from './visuals';
 import { CELL_SIZE, CELL_GAP } from '../visuals';
@@ -149,7 +150,9 @@ export function createBuildingSprite(
     if (!isConstructing && !isProducing) return;
 
     const deltaSeconds = ticker.deltaMS / 1000;
-    const step = sprite.fillRate * deltaSeconds;
+    // Multiply fillRate by game speed so animation keeps up with faster ticks
+    const speed = getGameState().speed;
+    const step = sprite.fillRate * speed * deltaSeconds;
 
     if (sprite.displayedProgress < sprite.targetProgress) {
       sprite.displayedProgress = Math.min(
