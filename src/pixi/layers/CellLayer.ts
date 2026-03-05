@@ -18,6 +18,7 @@ export interface CellSprite {
   background: Graphics;
   label: Text;
   cell: MapCell;
+  attackWarning: Text;
 }
 
 export interface CellLayerConfig {
@@ -113,10 +114,24 @@ export class CellLayer {
     label.x = CELL_SIZE / 2;
     label.y = CELL_SIZE / 2;
 
+    // Attack warning indicator
+    const warningStyle = new TextStyle({
+      fontSize: 16,
+    });
+    const attackWarning = new Text({
+      text: '⚠️',
+      style: warningStyle,
+    });
+    attackWarning.anchor.set(0.5);
+    attackWarning.x = CELL_SIZE - 10;
+    attackWarning.y = 10;
+    attackWarning.visible = false;
+
     cellContainer.addChild(background);
     cellContainer.addChild(label);
+    cellContainer.addChild(attackWarning);
 
-    return { container: cellContainer, background, label, cell };
+    return { container: cellContainer, background, label, cell, attackWarning };
   }
 
   /**
@@ -155,6 +170,30 @@ export class CellLayer {
     this.sprites.forEach((_, cellId) => {
       const state = getState(cellId);
       this.updateCellVisual(cellId, state);
+    });
+  }
+
+  /**
+   * Update attack warning visibility for a cell
+   */
+  setAttackWarning(cellId: string, ticksRemaining: number | null): void {
+    const sprite = this.sprites.get(cellId);
+    if (!sprite) return;
+
+    if (ticksRemaining !== null && ticksRemaining > 0) {
+      sprite.attackWarning.visible = true;
+      sprite.attackWarning.text = `⚠️${ticksRemaining}`;
+    } else {
+      sprite.attackWarning.visible = false;
+    }
+  }
+
+  /**
+   * Clear all attack warnings
+   */
+  clearAllAttackWarnings(): void {
+    this.sprites.forEach((sprite) => {
+      sprite.attackWarning.visible = false;
     });
   }
 

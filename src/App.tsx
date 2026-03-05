@@ -6,6 +6,8 @@ import {
   buildingsMiddleware,
   resourcesMiddleware,
   unitsMiddleware,
+  aiMiddleware,
+  attacksMiddleware,
   eventsResolverMiddleware,
 } from './game';
 import { getGameState } from './store';
@@ -27,11 +29,15 @@ function App() {
     // 1. buildings - updates construction + unit production
     // 2. resources - calculates production, deducts upkeep, handles desertion
     // 3. units - placeholder for future unit logic
-    // 4. eventsResolver - applies resource changes to state
+    // 4. ai - evaluates AI factions (police raids, etc.)
+    // 5. attacks - countdown pending attacks, resolve combat
+    // 6. eventsResolver - applies resource changes to state
     gameLoop
       .use(buildingsMiddleware)
       .use(resourcesMiddleware)
       .use(unitsMiddleware)
+      .use(aiMiddleware)
+      .use(attacksMiddleware)
       .use(eventsResolverMiddleware)
       .markInitialized();
 

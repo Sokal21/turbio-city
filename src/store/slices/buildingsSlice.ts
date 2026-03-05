@@ -26,6 +26,7 @@ export interface BuildingsActions {
   // Building management
   placeBuilding: (buildingType: keyof Buildings, cellIds: string[], level?: number) => string | null;
   cancelBuilding: (buildingId: string) => Partial<Resources> | null;
+  removeBuilding: (buildingId: string) => void;
   updateBuildingProgress: (buildingId: string, progress: number) => void;
   activateBuilding: (buildingId: string) => void;
   upgradeBuilding: (buildingId: string) => boolean;
@@ -167,6 +168,12 @@ export const createBuildingsSlice: StateCreator<
     });
 
     return refund;
+  },
+
+  removeBuilding: (buildingId) => {
+    set((state) => {
+      delete state.buildings[buildingId];
+    });
   },
 
   updateBuildingProgress: (buildingId, progress) => {

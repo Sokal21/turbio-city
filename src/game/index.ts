@@ -3,6 +3,8 @@ export {
   resourcesMiddleware,
   buildingsMiddleware,
   unitsMiddleware,
+  aiMiddleware,
+  attacksMiddleware,
   eventsResolverMiddleware,
 } from './middlewares';
 export * from './buildings';

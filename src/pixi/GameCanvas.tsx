@@ -43,6 +43,7 @@ export function GameCanvas() {
   const placementMode = useGameStore((state) => state.placementMode);
   const buildings = useGameStore((state) => state.buildings);
   const cellOwnership = useGameStore((state) => state.cellOwnership);
+  const pendingAttacks = useGameStore((state) => state.pendingAttacks);
 
   // Initialize PixiJS application
   useEffect(() => {
@@ -150,6 +151,22 @@ export function GameCanvas() {
 
     refreshAllCellVisuals(cellLayer, hoveredCellsRef.current, selectedCellId);
   }, [selectedCellId, placementMode, cellOwnership]);
+
+  // Update attack warnings when pending attacks change
+  useEffect(() => {
+    const cellLayer = cellLayerRef.current;
+    if (!cellLayer) return;
+
+    // Clear all warnings first
+    cellLayer.clearAllAttackWarnings();
+
+    // Set warnings for notified attacks
+    for (const attack of pendingAttacks) {
+      if (attack.notified) {
+        cellLayer.setAttackWarning(attack.targetCellId, attack.ticksRemaining);
+      }
+    }
+  }, [pendingAttacks]);
 
   // Update buildings when they change
   useEffect(() => {

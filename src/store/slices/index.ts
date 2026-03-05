@@ -12,3 +12,6 @@ export type { BuildingsSlice, BuildingsActions } from './buildingsSlice';
 
 export { createUnitsSlice } from './unitsSlice';
 export type { UnitsSlice, UnitsActions } from './unitsSlice';
+
+export { createAttacksSlice } from './attacksSlice';
+export type { AttacksSlice, AttacksActions, PendingAttack } from './attacksSlice';
