@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { GameCanvas } from './pixi';
-import { HUD, GameControls, CellInfo, BuildMenu, ExpansionModal, UnitProductionModal, UnitPool, TroopModal } from './ui';
+import { HUD, CellInfo, BuildMenu, ExpansionModal, UnitProductionModal, UnitPool, TroopModal } from './ui';
 import {
   gameLoop,
   buildingsMiddleware,
@@ -55,9 +55,9 @@ function App() {
   return (
     <div style={styles.app}>
       <header style={styles.header}>
-        <h1 style={styles.title}>Turbio City</h1>
+        {/* <h1 style={styles.title}>Turbio City</h1> */}
         <HUD />
-        <GameControls />
+        {/* <GameControls /> */}
       </header>
       <main style={styles.main}>
         <div style={styles.mapSection}>
@@ -81,13 +81,12 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     backgroundColor: '#1a1a2e',
     color: '#fff',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
   },
   header: {
     display: 'flex',
     alignItems: 'center',
     gap: '24px',
-    padding: '16px 24px',
+    // padding: '16px 24px',
     borderBottom: '1px solid #4a5568',
   },
   title: {

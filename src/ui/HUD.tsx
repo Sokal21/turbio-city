@@ -1,4 +1,6 @@
 import { useGameStore } from '../store';
+import resourcesBarBg from '../assets/ui/hud/resources_bar.png';
+import { GameControls } from './GameControls';
 
 export function HUD() {
   const money = useGameStore((state) => state.resources.money);
@@ -15,29 +17,32 @@ export function HUD() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.resource}>
-        <span style={styles.icon}>$</span>
-        <span style={styles.value}>{money.toLocaleString()}</span>
+      {/* Money indicator - adjust top/left to position */}
+      <div style={styles.moneyIndicator}>
+        <span style={styles.value}>${money.toLocaleString()}</span>
       </div>
-      <div style={styles.resource}>
-        <span style={styles.icon}>*</span>
-        <span style={styles.value}>{bullets.toLocaleString()}</span>
+
+      {/* Bullets indicator - adjust top/left to position */}
+      <div style={styles.bulletsIndicator}>
+        <span style={styles.value}>*{bullets.toLocaleString()}</span>
       </div>
+
+      {/* Heat indicator - adjust top/left to position */}
       {totalHeat > 0 && (
-        <>
-          <div style={styles.divider} />
-          <div style={styles.heat}>
-            <span style={styles.heatIcon}>H</span>
-            <span style={styles.heatValue}>{totalHeat}</span>
-          </div>
-        </>
+        <div style={styles.heatIndicator}>
+          <span style={styles.value}>{totalHeat}</span>
+        </div>
       )}
+
+      {/* Deficit indicator */}
       {deficitTicks > 0 && (
-        <div style={styles.deficit}>
+        <div style={styles.deficitIndicator}>
           <span style={styles.deficitIcon}>!</span>
           <span style={styles.deficitValue}>{ticksUntilDesertion}</span>
         </div>
       )}
+
+      {/* Right section - speed & tick */}
       <div style={styles.rightSection}>
         <button style={styles.speedButton} onClick={cycleSpeed}>
           x{speed}
@@ -45,6 +50,7 @@ export function HUD() {
         <div style={styles.tick}>
           Tick: {tick}
         </div>
+        <GameControls />
       </div>
     </div>
   );
@@ -52,76 +58,66 @@ export function HUD() {
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    display: 'flex',
-    gap: '24px',
-    padding: '12px 24px',
-    backgroundColor: '#2d3748',
+    position: 'relative',
+    backgroundImage: `url(${resourcesBarBg})`,
+    backgroundSize: 'auto 100%',
+    backgroundPosition: 'left center',
+    backgroundRepeat: 'no-repeat',
     borderRadius: '8px',
-    alignItems: 'center',
+    height: '120px',
+    width: '100%',
+    backgroundColor: '#0C0F13',
   },
-  resource: {
+  // Adjust these top/left values to position on background
+  moneyIndicator: {
+    position: 'absolute',
+    top: '38px',
+    left: '160px',
+  },
+  bulletsIndicator: {
+    position: 'absolute',
+    top: '38px',
+    left: '365px',
+  },
+  heatIndicator: {
+    position: 'absolute',
+    top: '38px',
+    left: '590px',
+  },
+  deficitIndicator: {
+    position: 'absolute',
+    top: '40px',
+    left: '420px',
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-  },
-  icon: {
-    fontSize: '20px',
-    color: '#68d391',
+    gap: '6px',
   },
   value: {
-    fontSize: '18px',
-    fontWeight: 'bold',
+    fontSize: '28px',
     color: '#fff',
-    fontFamily: 'monospace',
-  },
-  divider: {
-    width: '1px',
-    height: '24px',
-    backgroundColor: '#4a5568',
-  },
-  heat: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  heatIcon: {
-    fontSize: '14px',
-    fontWeight: 'bold',
-    color: '#fc8181',
-    backgroundColor: '#742a2a',
-    padding: '2px 6px',
-    borderRadius: '4px',
   },
   heatValue: {
-    fontSize: '16px',
-    fontWeight: 'bold',
+    fontSize: '28px',
     color: '#fc8181',
-    fontFamily: 'monospace',
-  },
-  deficit: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
   },
   deficitIcon: {
-    fontSize: '14px',
-    fontWeight: 'bold',
+    fontSize: '24px',
     color: '#fbd38d',
     backgroundColor: '#744210',
     padding: '2px 8px',
     borderRadius: '4px',
   },
   deficitValue: {
-    fontSize: '16px',
-    fontWeight: 'bold',
+    fontSize: '28px',
     color: '#fbd38d',
-    fontFamily: 'monospace',
   },
   rightSection: {
+    position: 'absolute',
+    top: '40px',
+    right: '20px',
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    marginLeft: 'auto',
   },
   speedButton: {
     padding: '6px 12px',

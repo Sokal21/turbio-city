@@ -174,9 +174,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   count: {
     fontSize: '16px',
-    fontWeight: 'bold',
     color: '#fff',
-    fontFamily: 'monospace',
   },
   level: {
     fontSize: '12px',
