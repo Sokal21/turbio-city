@@ -15,3 +15,6 @@ export type { UnitsSlice, UnitsActions } from './unitsSlice';
 
 export { createAttacksSlice } from './attacksSlice';
 export type { AttacksSlice, AttacksActions, PendingAttack } from './attacksSlice';
+
+export { createMovementsSlice, getManhattanDistance, isInstantMovement } from './movementsSlice';
+export type { MovementsSlice, MovementsActions, PendingMovement } from './movementsSlice';

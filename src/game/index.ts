@@ -5,6 +5,7 @@ export {
   unitsMiddleware,
   aiMiddleware,
   attacksMiddleware,
+  movementsMiddleware,
   eventsResolverMiddleware,
 } from './middlewares';
 export * from './buildings';

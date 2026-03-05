@@ -3,4 +3,5 @@ export { buildingsMiddleware } from './buildingsMiddleware';
 export { unitsMiddleware } from './unitsMiddleware';
 export { aiMiddleware } from './aiMiddleware';
 export { attacksMiddleware } from './attacksMiddleware';
+export { movementsMiddleware } from './movementsMiddleware';
 export { eventsResolverMiddleware } from './eventsResolverMiddleware';

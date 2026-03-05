@@ -24,6 +24,15 @@ export interface CellSprite {
   attackTargetProgress: number;
   attackDisplayedProgress: number;
   attackFillRate: number;
+  // Movement animation state
+  movementOverlay: Graphics;
+  movementWarning: Text;
+  movementTargetProgress: number;
+  movementDisplayedProgress: number;
+  movementFillRate: number;
+  // Menu button (shown on hover)
+  menuButton: Graphics;
+  menuButtonType: 'none' | 'production' | 'expansion';
 }
 
 export interface CellLayerConfig {
@@ -31,6 +40,7 @@ export interface CellLayerConfig {
   onCellClick: (cell: MapCell) => void;
   onCellEnter: (cell: MapCell) => void;
   onCellLeave: (cell: MapCell) => void;
+  onMenuButtonClick?: (cell: MapCell, type: 'production' | 'expansion') => void;
 }
 
 export class CellLayer {
@@ -38,6 +48,7 @@ export class CellLayer {
   private sprites: Map<string, CellSprite> = new Map();
   private offset: { x: number; y: number } = { x: 0, y: 0 };
   private tickerCallback: ((ticker: Ticker) => void) | null = null;
+  private onMenuButtonClick?: (cell: MapCell, type: 'production' | 'expansion') => void;
 
   constructor() {
     this.container = new Container();
@@ -62,7 +73,8 @@ export class CellLayer {
    * Initialize the layer with map data and callbacks
    */
   init(config: CellLayerConfig): void {
-    const { map, onCellClick, onCellEnter, onCellLeave } = config;
+    const { map, onCellClick, onCellEnter, onCellLeave, onMenuButtonClick } = config;
+    this.onMenuButtonClick = onMenuButtonClick;
 
     // Calculate offset to center the map
     const mapWidth = map.width * (CELL_SIZE + CELL_GAP);
@@ -96,20 +108,35 @@ export class CellLayer {
       this.sprites.set(cell.id, sprite);
     }
 
-    // Start animation ticker for attack overlays
+    // Start animation ticker for attack and movement overlays
     this.tickerCallback = (ticker: Ticker) => {
+      const deltaSeconds = ticker.deltaMS / 1000;
+
       this.sprites.forEach((sprite) => {
-        if (sprite.attackTargetProgress <= 0) return;
+        // Attack animation
+        if (sprite.attackTargetProgress > 0) {
+          const step = sprite.attackFillRate * deltaSeconds;
 
-        const deltaSeconds = ticker.deltaMS / 1000;
-        const step = sprite.attackFillRate * deltaSeconds;
+          if (sprite.attackDisplayedProgress < sprite.attackTargetProgress) {
+            sprite.attackDisplayedProgress = Math.min(
+              sprite.attackDisplayedProgress + step,
+              sprite.attackTargetProgress
+            );
+            this.drawAttackOverlay(sprite);
+          }
+        }
 
-        if (sprite.attackDisplayedProgress < sprite.attackTargetProgress) {
-          sprite.attackDisplayedProgress = Math.min(
-            sprite.attackDisplayedProgress + step,
-            sprite.attackTargetProgress
-          );
-          this.drawAttackOverlay(sprite);
+        // Movement animation
+        if (sprite.movementTargetProgress > 0) {
+          const step = sprite.movementFillRate * deltaSeconds;
+
+          if (sprite.movementDisplayedProgress < sprite.movementTargetProgress) {
+            sprite.movementDisplayedProgress = Math.min(
+              sprite.movementDisplayedProgress + step,
+              sprite.movementTargetProgress
+            );
+            this.drawMovementOverlay(sprite);
+          }
         }
       });
     };
@@ -155,10 +182,35 @@ export class CellLayer {
     attackWarning.y = 10;
     attackWarning.visible = false;
 
+    // Movement overlay (purple fill from bottom)
+    const movementOverlay = new Graphics();
+
+    // Movement indicator
+    const movementWarningStyle = new TextStyle({
+      fontSize: 14,
+    });
+    const movementWarning = new Text({
+      text: '→',
+      style: movementWarningStyle,
+    });
+    movementWarning.anchor.set(0.5);
+    movementWarning.x = 10;
+    movementWarning.y = 10;
+    movementWarning.visible = false;
+
+    // Menu button (shown on hover for production buildings or expandable cells)
+    const menuButton = new Graphics();
+    menuButton.visible = false;
+    menuButton.eventMode = 'static';
+    menuButton.cursor = 'pointer';
+
     cellContainer.addChild(background);
+    cellContainer.addChild(movementOverlay);
     cellContainer.addChild(attackOverlay);
     cellContainer.addChild(label);
+    cellContainer.addChild(movementWarning);
     cellContainer.addChild(attackWarning);
+    cellContainer.addChild(menuButton);
 
     return {
       container: cellContainer,
@@ -170,6 +222,13 @@ export class CellLayer {
       attackTargetProgress: 0,
       attackDisplayedProgress: 0,
       attackFillRate: 0,
+      movementOverlay,
+      movementWarning,
+      movementTargetProgress: 0,
+      movementDisplayedProgress: 0,
+      movementFillRate: 0,
+      menuButton,
+      menuButtonType: 'none',
     };
   }
 
@@ -282,6 +341,74 @@ export class CellLayer {
   }
 
   /**
+   * Draw the purple movement overlay fill
+   */
+  private drawMovementOverlay(sprite: CellSprite): void {
+    const { movementOverlay, movementDisplayedProgress } = sprite;
+
+    movementOverlay.clear();
+
+    if (movementDisplayedProgress <= 0) return;
+
+    // Fill from bottom to top in purple
+    const fillHeight = CELL_SIZE * movementDisplayedProgress;
+    const yStart = CELL_SIZE - fillHeight;
+
+    movementOverlay.roundRect(0, yStart, CELL_SIZE, fillHeight, 4);
+    movementOverlay.fill({ color: 0x805ad5, alpha: 0.5 });
+  }
+
+  /**
+   * Set movement progress for a cell (for animation)
+   */
+  setMovementProgress(
+    cellId: string,
+    ticksRemaining: number,
+    ticksTotal: number,
+    gameSpeed: number
+  ): void {
+    const sprite = this.sprites.get(cellId);
+    if (!sprite) return;
+
+    // Progress increases as units approach
+    const progress = 1 - ticksRemaining / ticksTotal;
+
+    sprite.movementTargetProgress = progress;
+    sprite.movementFillRate = (1 / ticksTotal) * gameSpeed;
+
+    // Show indicator
+    sprite.movementWarning.visible = true;
+    sprite.movementWarning.text = `→${ticksRemaining}`;
+  }
+
+  /**
+   * Clear movement progress for a cell
+   */
+  clearMovementProgress(cellId: string): void {
+    const sprite = this.sprites.get(cellId);
+    if (!sprite) return;
+
+    sprite.movementTargetProgress = 0;
+    sprite.movementDisplayedProgress = 0;
+    sprite.movementFillRate = 0;
+    sprite.movementWarning.visible = false;
+    sprite.movementOverlay.clear();
+  }
+
+  /**
+   * Clear all movement progress
+   */
+  clearAllMovementProgress(): void {
+    this.sprites.forEach((sprite) => {
+      sprite.movementWarning.visible = false;
+      sprite.movementTargetProgress = 0;
+      sprite.movementDisplayedProgress = 0;
+      sprite.movementFillRate = 0;
+      sprite.movementOverlay.clear();
+    });
+  }
+
+  /**
    * Get pixel position for a cell ID
    */
   getCellPixelPosition(cellId: string): { x: number; y: number } | null {
@@ -292,6 +419,74 @@ export class CellLayer {
       x: this.offset.x + x * (CELL_SIZE + CELL_GAP),
       y: this.offset.y + y * (CELL_SIZE + CELL_GAP),
     };
+  }
+
+  /**
+   * Show menu button on a cell
+   */
+  showMenuButton(cellId: string, type: 'production' | 'expansion'): void {
+    const sprite = this.sprites.get(cellId);
+    if (!sprite) return;
+
+    const { menuButton, cell } = sprite;
+
+    // Clear and redraw with appropriate style
+    menuButton.clear();
+
+    const buttonSize = 16;
+    const padding = 4;
+
+    if (type === 'production') {
+      // Purple circle with gear-like appearance for production
+      menuButton.circle(padding + buttonSize / 2, padding + buttonSize / 2, buttonSize / 2);
+      menuButton.fill({ color: 0x805ad5 });
+      menuButton.stroke({ width: 2, color: 0x9f7aea });
+      // Inner dot
+      menuButton.circle(padding + buttonSize / 2, padding + buttonSize / 2, 3);
+      menuButton.fill({ color: 0xffffff });
+    } else {
+      // Green circle with plus for expansion
+      menuButton.circle(padding + buttonSize / 2, padding + buttonSize / 2, buttonSize / 2);
+      menuButton.fill({ color: 0x48bb78 });
+      menuButton.stroke({ width: 2, color: 0x68d391 });
+      // Plus sign
+      menuButton.rect(padding + buttonSize / 2 - 4, padding + buttonSize / 2 - 1, 8, 2);
+      menuButton.rect(padding + buttonSize / 2 - 1, padding + buttonSize / 2 - 4, 2, 8);
+      menuButton.fill({ color: 0xffffff });
+    }
+
+    sprite.menuButtonType = type;
+    menuButton.visible = true;
+
+    // Remove old listeners and add new one
+    menuButton.removeAllListeners();
+    menuButton.on('pointerdown', (e) => {
+      e.stopPropagation();
+      if (this.onMenuButtonClick) {
+        this.onMenuButtonClick(cell, type);
+      }
+    });
+  }
+
+  /**
+   * Hide menu button on a cell
+   */
+  hideMenuButton(cellId: string): void {
+    const sprite = this.sprites.get(cellId);
+    if (!sprite) return;
+
+    sprite.menuButton.visible = false;
+    sprite.menuButtonType = 'none';
+  }
+
+  /**
+   * Hide all menu buttons
+   */
+  hideAllMenuButtons(): void {
+    this.sprites.forEach((sprite) => {
+      sprite.menuButton.visible = false;
+      sprite.menuButtonType = 'none';
+    });
   }
 
   /**

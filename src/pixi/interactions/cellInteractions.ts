@@ -78,10 +78,12 @@ export function getCellVisualState(
 export interface CellInteractionContext {
   cellLayer: CellLayer;
   hoveredCells: Set<string>;
+  hoveredCellId: string | null;
 }
 
 /**
- * Handle cell click - placement, expansion, building interaction, or selection
+ * Handle cell click - placement or selection
+ * Note: Modal opening is handled by menu button clicks, not cell clicks
  */
 export function handleCellClick(cell: MapCell): void {
   const state = getGameState();
@@ -96,24 +98,6 @@ export function handleCellClick(cell: MapCell): void {
       state.placeBuilding(placementMode.buildingType, buildingCells);
     }
   } else {
-    // Check for expansion
-    const canExpand = mapController.canExpandTo(cell.id);
-    if (canExpand.canExpand) {
-      state.openExpansionModal(cell.id);
-      return;
-    }
-
-    // Check for building on this cell
-    const building = state.getBuildingAt(cell.id);
-    if (building && building.status === 'active') {
-      const definition = getBuildingDefinition(building.type);
-      if (definition.category === 'units') {
-        // Open production modal for unit buildings
-        state.openProductionModal(building.id);
-        return;
-      }
-    }
-
     // Default: select the cell
     state.selectCell(cell.id);
   }
@@ -125,6 +109,12 @@ export function handleCellClick(cell: MapCell): void {
 export function handleCellEnter(cell: MapCell, ctx: CellInteractionContext): void {
   const state = getGameState();
   const placementMode = state.placementMode;
+
+  // Hide previous menu button
+  if (ctx.hoveredCellId && ctx.hoveredCellId !== cell.id) {
+    ctx.cellLayer.hideMenuButton(ctx.hoveredCellId);
+  }
+  ctx.hoveredCellId = cell.id;
 
   if (placementMode?.active && placementMode.buildingType) {
     const buildingCells = getBuildingFootprint(cell.id, placementMode.buildingType);
@@ -138,6 +128,27 @@ export function handleCellEnter(cell: MapCell, ctx: CellInteractionContext): voi
       const visualState = getCellVisualState(cellId, { hoveredCells: ctx.hoveredCells });
       ctx.cellLayer.updateCellVisual(cellId, visualState);
     });
+  } else {
+    // Check if this cell should show a menu button
+    const building = state.getBuildingAt(cell.id);
+
+    if (building && building.status === 'active') {
+      const definition = getBuildingDefinition(building.type);
+      if (definition.category === 'units') {
+        // Show production menu button on the first cell of the building
+        // (show even when hovering over other cells of the building)
+        const firstCellId = building.cellIds[0];
+        ctx.cellLayer.showMenuButton(firstCellId, 'production');
+        // Track this so we can hide it on leave
+        ctx.hoveredCellId = firstCellId;
+      }
+    } else {
+      // Check for expansion
+      const canExpand = mapController.canExpandTo(cell.id);
+      if (canExpand.canExpand) {
+        ctx.cellLayer.showMenuButton(cell.id, 'expansion');
+      }
+    }
   }
 }
 
@@ -146,6 +157,12 @@ export function handleCellEnter(cell: MapCell, ctx: CellInteractionContext): voi
  */
 export function handleCellLeave(ctx: CellInteractionContext): void {
   const state = getGameState();
+
+  // Hide menu button
+  if (ctx.hoveredCellId) {
+    ctx.cellLayer.hideMenuButton(ctx.hoveredCellId);
+    ctx.hoveredCellId = null;
+  }
 
   // Restore visuals for previously hovered cells
   ctx.hoveredCells.forEach((cellId) => {
@@ -173,4 +190,20 @@ export function refreshAllCellVisuals(
     }
     return getCellVisualState(cellId, { selectedCellId });
   });
+}
+
+/**
+ * Handle menu button click
+ */
+export function handleMenuButtonClick(cell: MapCell, type: 'production' | 'expansion'): void {
+  const state = getGameState();
+
+  if (type === 'production') {
+    const building = state.getBuildingAt(cell.id);
+    if (building) {
+      state.openProductionModal(building.id);
+    }
+  } else if (type === 'expansion') {
+    state.openExpansionModal(cell.id);
+  }
 }

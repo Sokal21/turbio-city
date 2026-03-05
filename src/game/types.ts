@@ -17,6 +17,7 @@ export type GameEvent =
   | { type: 'ATTACK_RESOLVED'; attackId: string; winner: 'attacker' | 'defender'; defended: boolean; heatChange: number }
   | { type: 'ATTACK_FIZZLED'; attackId: string; reason: string }
   | { type: 'CELL_LOST'; cellId: string; attackerId: string }
+  | { type: 'UNITS_ARRIVED'; movementId: string; unitIds: string[]; toCellId: string }
   | { type: 'TICK_COMPLETED'; tick: number };
 
 // Tick context passed through middleware chain

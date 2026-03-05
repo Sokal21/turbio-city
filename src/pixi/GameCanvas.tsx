@@ -28,6 +28,7 @@ import {
   handleCellLeave,
   refreshAllCellVisuals,
   getCellVisualState,
+  handleMenuButtonClick,
 } from './interactions';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_BG_COLOR } from './visuals';
 
@@ -46,6 +47,7 @@ export function GameCanvas() {
   const buildings = useGameStore((state) => state.buildings);
   const cellOwnership = useGameStore((state) => state.cellOwnership);
   const pendingAttacks = useGameStore((state) => state.pendingAttacks);
+  const pendingMovements = useGameStore((state) => state.pendingMovements);
   const gameSpeed = useGameStore((state) => state.speed);
 
   // Initialize PixiJS application
@@ -91,6 +93,7 @@ export function GameCanvas() {
       const interactionCtx = {
         cellLayer,
         hoveredCells: hoveredCellsRef.current,
+        hoveredCellId: null as string | null,
       };
 
       // Initialize cell layer with callbacks
@@ -99,6 +102,7 @@ export function GameCanvas() {
         onCellClick: (cell) => handleCellClick(cell),
         onCellEnter: (cell) => handleCellEnter(cell, interactionCtx),
         onCellLeave: () => handleCellLeave(interactionCtx),
+        onMenuButtonClick: (cell, type) => handleMenuButtonClick(cell, type),
       });
 
       // Add cell layer to stage
@@ -219,6 +223,32 @@ export function GameCanvas() {
       }
     }
   }, [pendingAttacks, gameSpeed, buildings]);
+
+  // Update movement progress when pending movements change
+  useEffect(() => {
+    const cellLayer = cellLayerRef.current;
+    if (!cellLayer) return;
+
+    // Get cells with incoming movements
+    const movementCells = new Set(pendingMovements.map((m) => m.toCellId));
+
+    // Clear movements that are no longer pending
+    cellLayer.getAllSprites().forEach((_, cellId) => {
+      if (!movementCells.has(cellId)) {
+        cellLayer.clearMovementProgress(cellId);
+      }
+    });
+
+    // Set progress for pending movements
+    for (const movement of pendingMovements) {
+      cellLayer.setMovementProgress(
+        movement.toCellId,
+        movement.ticksRemaining,
+        movement.ticksTotal,
+        gameSpeed
+      );
+    }
+  }, [pendingMovements, gameSpeed]);
 
   // Update buildings when they change
   useEffect(() => {

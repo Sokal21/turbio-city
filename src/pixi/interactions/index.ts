@@ -6,5 +6,6 @@ export {
   handleCellEnter,
   handleCellLeave,
   refreshAllCellVisuals,
+  handleMenuButtonClick,
   type CellInteractionContext,
 } from './cellInteractions';

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { GameCanvas } from './pixi';
-import { HUD, GameControls, CellInfo, BuildMenu, ExpansionModal, UnitProductionModal, UnitPool } from './ui';
+import { HUD, GameControls, CellInfo, BuildMenu, ExpansionModal, UnitProductionModal, UnitPool, TroopModal } from './ui';
 import {
   gameLoop,
   buildingsMiddleware,
@@ -8,6 +8,7 @@ import {
   unitsMiddleware,
   aiMiddleware,
   attacksMiddleware,
+  movementsMiddleware,
   eventsResolverMiddleware,
 } from './game';
 import { getGameState } from './store';
@@ -31,13 +32,15 @@ function App() {
     // 3. units - placeholder for future unit logic
     // 4. ai - evaluates AI factions (police raids, etc.)
     // 5. attacks - countdown pending attacks, resolve combat
-    // 6. eventsResolver - applies resource changes to state
+    // 6. movements - countdown unit movements, resolve arrivals
+    // 7. eventsResolver - applies resource changes to state
     gameLoop
       .use(buildingsMiddleware)
       .use(resourcesMiddleware)
       .use(unitsMiddleware)
       .use(aiMiddleware)
       .use(attacksMiddleware)
+      .use(movementsMiddleware)
       .use(eventsResolverMiddleware)
       .markInitialized();
 
@@ -63,6 +66,7 @@ function App() {
         </div>
         <aside style={styles.sidebar}>
           <CellInfo />
+          <TroopModal />
           <BuildMenu />
         </aside>
       </main>

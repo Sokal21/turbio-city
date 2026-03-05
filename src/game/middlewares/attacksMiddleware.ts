@@ -43,8 +43,18 @@ function resolveAttack(
     return;
   }
 
-  // Get defending units at this cell
-  const defendingUnits = state.getUnitsAtCell(targetCellId);
+  // Get defending units - if cell is part of a building, gather from all building cells
+  const building = state.getBuildingAt(targetCellId);
+  let defendingUnits;
+
+  if (building) {
+    // Gather defenders from all cells of the building
+    defendingUnits = building.cellIds.flatMap((cellId) => state.getUnitsAtCell(cellId));
+  } else {
+    // Just get units at this specific cell
+    defendingUnits = state.getUnitsAtCell(targetCellId);
+  }
+
   const defenderPower = calculateDefensePower(defendingUnits);
 
   // Resolve combat
