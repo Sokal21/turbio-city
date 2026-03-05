@@ -7,25 +7,25 @@ import type { AIController, AIAction } from './types';
  */
 const POLICE_CONFIG = {
   // Base probability per tick (at heat 0)
-  baseProbability: 0.001,
+  baseProbability: 0.0001,
 
   // Additional probability per heat point
-  probabilityPerHeat: 0.002,
+  probabilityPerHeat: 0.001,
 
   // Max probability cap
-  maxProbability: 0.15,
+  maxProbability: 0.03,
 
   // Probability reduction per active attack (harder to get overwhelmed)
-  probabilityReductionPerAttack: 0.03,
+  probabilityReductionPerAttack: 0.01,
 
   // Attack power (fixed for now)
   attackPower: 10,
 
   // Ticks until attack lands
-  ticksUntilAttack: 30,
+  ticksUntilAttack: 60,
 
   // Minimum heat to trigger any attack
-  minimumHeat: 5,
+  minimumHeat: 10,
 };
 
 /**

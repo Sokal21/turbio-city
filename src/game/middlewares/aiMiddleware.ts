@@ -27,6 +27,7 @@ export const aiMiddleware: Middleware = async (ctx, next) => {
         const attackId = state.addPendingAttack({
           attackerId: controller.id as 'police',
           targetCellId: action.targetCellId,
+          ticksTotal: action.ticksUntil,
           ticksRemaining: action.ticksUntil,
           notified: true, // For now, always notify. Future: intel middleware decides
           attackPower: action.attackPower,

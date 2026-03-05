@@ -5,6 +5,7 @@ export interface PendingAttack {
   id: string;
   attackerId: 'police'; // Future: gang_id
   targetCellId: string;
+  ticksTotal: number;
   ticksRemaining: number;
   notified: boolean;
   attackPower: number;

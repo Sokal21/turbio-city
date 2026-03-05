@@ -18,6 +18,8 @@ import {
   createBuildingSprite,
   updateBuildingSprite,
   destroyBuildingSprite,
+  setBuildingAttackProgress,
+  clearBuildingAttackProgress,
   type BuildingSprite,
 } from './buildings';
 import {
@@ -44,6 +46,7 @@ export function GameCanvas() {
   const buildings = useGameStore((state) => state.buildings);
   const cellOwnership = useGameStore((state) => state.cellOwnership);
   const pendingAttacks = useGameStore((state) => state.pendingAttacks);
+  const gameSpeed = useGameStore((state) => state.speed);
 
   // Initialize PixiJS application
   useEffect(() => {
@@ -152,21 +155,70 @@ export function GameCanvas() {
     refreshAllCellVisuals(cellLayer, hoveredCellsRef.current, selectedCellId);
   }, [selectedCellId, placementMode, cellOwnership]);
 
-  // Update attack warnings when pending attacks change
+  // Update attack progress when pending attacks change
   useEffect(() => {
     const cellLayer = cellLayerRef.current;
     if (!cellLayer) return;
 
-    // Clear all warnings first
-    cellLayer.clearAllAttackWarnings();
+    // Track which buildings and cells are under attack
+    const attackedBuildingIds = new Set<string>();
+    const attackedCellsWithoutBuilding = new Set<string>();
 
-    // Set warnings for notified attacks
     for (const attack of pendingAttacks) {
-      if (attack.notified) {
-        cellLayer.setAttackWarning(attack.targetCellId, attack.ticksRemaining);
+      if (!attack.notified) continue;
+
+      // Check if there's a building on this cell
+      const building = Object.values(buildings).find((b) =>
+        b.cellIds.includes(attack.targetCellId)
+      );
+
+      if (building) {
+        attackedBuildingIds.add(building.id);
+      } else {
+        attackedCellsWithoutBuilding.add(attack.targetCellId);
       }
     }
-  }, [pendingAttacks]);
+
+    // Clear attack progress on buildings no longer under attack
+    buildingSpritesRef.current.forEach((sprite, buildingId) => {
+      if (!attackedBuildingIds.has(buildingId)) {
+        clearBuildingAttackProgress(sprite);
+      }
+    });
+
+    // Clear attack progress on cells no longer under attack
+    cellLayer.getAllSprites().forEach((_, cellId) => {
+      if (!attackedCellsWithoutBuilding.has(cellId)) {
+        cellLayer.clearAttackProgress(cellId);
+      }
+    });
+
+    // Set progress for notified attacks
+    for (const attack of pendingAttacks) {
+      if (!attack.notified) continue;
+
+      // Check if there's a building on this cell
+      const building = Object.values(buildings).find((b) =>
+        b.cellIds.includes(attack.targetCellId)
+      );
+
+      if (building) {
+        // Attack on building - use building sprite
+        const sprite = buildingSpritesRef.current.get(building.id);
+        if (sprite) {
+          setBuildingAttackProgress(sprite, attack.ticksRemaining, attack.ticksTotal);
+        }
+      } else {
+        // Attack on cell without building - use cell layer
+        cellLayer.setAttackProgress(
+          attack.targetCellId,
+          attack.ticksRemaining,
+          attack.ticksTotal,
+          gameSpeed
+        );
+      }
+    }
+  }, [pendingAttacks, gameSpeed, buildings]);
 
   // Update buildings when they change
   useEffect(() => {

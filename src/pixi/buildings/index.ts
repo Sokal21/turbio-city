@@ -121,6 +121,24 @@ export function createBuildingSprite(
   progressText.y = height - 16;
   container.addChild(progressText);
 
+  // Attack overlay (red fill from bottom)
+  const attackOverlay = new Graphics();
+  container.addChild(attackOverlay);
+
+  // Attack warning icon
+  const attackWarningStyle = new TextStyle({
+    fontSize: Math.min(20, height / 3),
+  });
+  const attackWarning = new Text({
+    text: '⚠️',
+    style: attackWarningStyle,
+  });
+  attackWarning.anchor.set(0.5);
+  attackWarning.x = width - 12;
+  attackWarning.y = 12;
+  attackWarning.visible = false;
+  container.addChild(attackWarning);
+
   // Calculate fill rate
   const buildTimeSeconds = building.constructionTotal;
   const fillRate = 1 / buildTimeSeconds;
@@ -140,26 +158,45 @@ export function createBuildingSprite(
     targetProgress: initialProgress,
     fillRate,
     tickerCallback: null,
+    attackOverlay,
+    attackWarning,
+    attackDisplayedProgress: 0,
+    attackTargetProgress: 0,
+    attackFillRate: 0,
   };
 
-  // Animation ticker - handles both construction and production
+  // Animation ticker - handles construction, production, and attack
   const tickerCallback = (ticker: Ticker) => {
+    const deltaSeconds = ticker.deltaMS / 1000;
+    const speed = getGameState().speed;
+
+    // Construction/production animation
     const isConstructing = sprite.building.status === 'constructing';
     const isProducing = sprite.building.status === 'active' && sprite.building.productionQueue.length > 0;
 
-    if (!isConstructing && !isProducing) return;
+    if (isConstructing || isProducing) {
+      const step = sprite.fillRate * speed * deltaSeconds;
 
-    const deltaSeconds = ticker.deltaMS / 1000;
-    // Multiply fillRate by game speed so animation keeps up with faster ticks
-    const speed = getGameState().speed;
-    const step = sprite.fillRate * speed * deltaSeconds;
+      if (sprite.displayedProgress < sprite.targetProgress) {
+        sprite.displayedProgress = Math.min(
+          sprite.displayedProgress + step,
+          sprite.targetProgress
+        );
+        drawBuildingOverlay(sprite);
+      }
+    }
 
-    if (sprite.displayedProgress < sprite.targetProgress) {
-      sprite.displayedProgress = Math.min(
-        sprite.displayedProgress + step,
-        sprite.targetProgress
-      );
-      drawBuildingOverlay(sprite);
+    // Attack animation
+    if (sprite.attackTargetProgress > 0) {
+      const attackStep = sprite.attackFillRate * speed * deltaSeconds;
+
+      if (sprite.attackDisplayedProgress < sprite.attackTargetProgress) {
+        sprite.attackDisplayedProgress = Math.min(
+          sprite.attackDisplayedProgress + attackStep,
+          sprite.attackTargetProgress
+        );
+        drawAttackOverlay(sprite);
+      }
     }
   };
 
@@ -226,6 +263,50 @@ export function updateBuildingSprite(
 
     drawBuildingOverlay(sprite);
   }
+}
+
+/**
+ * Draw the red attack overlay fill
+ */
+function drawAttackOverlay(sprite: BuildingSprite): void {
+  const { width, height, attackOverlay, attackDisplayedProgress } = sprite;
+
+  attackOverlay.clear();
+
+  if (attackDisplayedProgress <= 0) return;
+
+  // Fill from bottom to top in red
+  const fillHeight = height * attackDisplayedProgress;
+  const yStart = height - fillHeight;
+
+  attackOverlay.roundRect(0, yStart, width, fillHeight, 6);
+  attackOverlay.fill({ color: 0xe53e3e, alpha: 0.6 });
+}
+
+/**
+ * Set attack progress on a building
+ */
+export function setBuildingAttackProgress(
+  sprite: BuildingSprite,
+  ticksRemaining: number,
+  ticksTotal: number
+): void {
+  const progress = 1 - ticksRemaining / ticksTotal;
+  sprite.attackTargetProgress = progress;
+  sprite.attackFillRate = 1 / ticksTotal;
+  sprite.attackWarning.visible = true;
+  sprite.attackWarning.text = `⚠️${ticksRemaining}`;
+}
+
+/**
+ * Clear attack progress on a building
+ */
+export function clearBuildingAttackProgress(sprite: BuildingSprite): void {
+  sprite.attackTargetProgress = 0;
+  sprite.attackDisplayedProgress = 0;
+  sprite.attackFillRate = 0;
+  sprite.attackWarning.visible = false;
+  sprite.attackOverlay.clear();
 }
 
 export function destroyBuildingSprite(sprite: BuildingSprite): void {

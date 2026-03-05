@@ -14,9 +14,15 @@ export interface BuildingSprite {
     progressText: Text;
     width: number;
     height: number;
-    // Animation state
+    // Construction/production animation state
     displayedProgress: number;
     targetProgress: number;
     fillRate: number;
     tickerCallback: ((ticker: Ticker) => void) | null;
+    // Attack animation state
+    attackOverlay: Graphics;
+    attackWarning: Text;
+    attackDisplayedProgress: number;
+    attackTargetProgress: number;
+    attackFillRate: number;
 }

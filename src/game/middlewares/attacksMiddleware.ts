@@ -110,7 +110,9 @@ function resolveAttack(
 }
 
 /**
- * Handle attacker victory - destroy building or remove cell ownership
+ * Handle attacker victory - destroy building OR remove cell ownership
+ * If there's a building: destroy it but keep the cell
+ * If no building: lose the cell
  */
 function handleAttackerVictory(
   cellId: string,
@@ -122,7 +124,7 @@ function handleAttackerVictory(
   const building = state.getBuildingAt(cellId);
 
   if (building) {
-    // Destroy the building
+    // Destroy the building but keep cell ownership
     state.removeBuilding(building.id);
 
     ctx.events.push({
@@ -131,14 +133,14 @@ function handleAttackerVictory(
       buildingType: building.type,
       attackerId,
     });
+  } else {
+    // No building - lose the cell
+    state.setCellOwner(cellId, 'neutral');
+
+    ctx.events.push({
+      type: 'CELL_LOST',
+      cellId,
+      attackerId,
+    });
   }
-
-  // Remove cell from player ownership
-  state.setCellOwner(cellId, 'neutral');
-
-  ctx.events.push({
-    type: 'CELL_LOST',
-    cellId,
-    attackerId,
-  });
 }

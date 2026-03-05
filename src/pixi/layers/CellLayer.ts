@@ -8,7 +8,7 @@
  * - Handle cell pixel position calculations
  */
 
-import { Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Container, Graphics, Text, TextStyle, Ticker } from 'pixi.js';
 import type { MapCell, MapDefinition } from '../../types';
 import { CELL_SIZE, CELL_GAP, CANVAS_WIDTH, CANVAS_HEIGHT } from '../visuals/colors';
 import { getCellColors, type CellVisualState } from '../visuals/cellState';
@@ -19,6 +19,11 @@ export interface CellSprite {
   label: Text;
   cell: MapCell;
   attackWarning: Text;
+  attackOverlay: Graphics;
+  // Attack animation state
+  attackTargetProgress: number;
+  attackDisplayedProgress: number;
+  attackFillRate: number;
 }
 
 export interface CellLayerConfig {
@@ -32,6 +37,7 @@ export class CellLayer {
   private container: Container;
   private sprites: Map<string, CellSprite> = new Map();
   private offset: { x: number; y: number } = { x: 0, y: 0 };
+  private tickerCallback: ((ticker: Ticker) => void) | null = null;
 
   constructor() {
     this.container = new Container();
@@ -89,6 +95,25 @@ export class CellLayer {
       this.container.addChild(sprite.container);
       this.sprites.set(cell.id, sprite);
     }
+
+    // Start animation ticker for attack overlays
+    this.tickerCallback = (ticker: Ticker) => {
+      this.sprites.forEach((sprite) => {
+        if (sprite.attackTargetProgress <= 0) return;
+
+        const deltaSeconds = ticker.deltaMS / 1000;
+        const step = sprite.attackFillRate * deltaSeconds;
+
+        if (sprite.attackDisplayedProgress < sprite.attackTargetProgress) {
+          sprite.attackDisplayedProgress = Math.min(
+            sprite.attackDisplayedProgress + step,
+            sprite.attackTargetProgress
+          );
+          this.drawAttackOverlay(sprite);
+        }
+      });
+    };
+    Ticker.shared.add(this.tickerCallback);
   }
 
   /**
@@ -105,6 +130,9 @@ export class CellLayer {
     background.roundRect(0, 0, CELL_SIZE, CELL_SIZE, 4);
     background.fill(0x2d3748);
     background.stroke({ width: 2, color: 0x4a5568 });
+
+    // Attack overlay (red fill from bottom)
+    const attackOverlay = new Graphics();
 
     const label = new Text({
       text: cell.name || cell.id,
@@ -128,10 +156,21 @@ export class CellLayer {
     attackWarning.visible = false;
 
     cellContainer.addChild(background);
+    cellContainer.addChild(attackOverlay);
     cellContainer.addChild(label);
     cellContainer.addChild(attackWarning);
 
-    return { container: cellContainer, background, label, cell, attackWarning };
+    return {
+      container: cellContainer,
+      background,
+      label,
+      cell,
+      attackWarning,
+      attackOverlay,
+      attackTargetProgress: 0,
+      attackDisplayedProgress: 0,
+      attackFillRate: 0,
+    };
   }
 
   /**
@@ -174,26 +213,71 @@ export class CellLayer {
   }
 
   /**
-   * Update attack warning visibility for a cell
+   * Draw the red attack overlay fill
    */
-  setAttackWarning(cellId: string, ticksRemaining: number | null): void {
-    const sprite = this.sprites.get(cellId);
-    if (!sprite) return;
+  private drawAttackOverlay(sprite: CellSprite): void {
+    const { attackOverlay, attackDisplayedProgress } = sprite;
 
-    if (ticksRemaining !== null && ticksRemaining > 0) {
-      sprite.attackWarning.visible = true;
-      sprite.attackWarning.text = `⚠️${ticksRemaining}`;
-    } else {
-      sprite.attackWarning.visible = false;
-    }
+    attackOverlay.clear();
+
+    if (attackDisplayedProgress <= 0) return;
+
+    // Fill from bottom to top in red
+    const fillHeight = CELL_SIZE * attackDisplayedProgress;
+    const yStart = CELL_SIZE - fillHeight;
+
+    attackOverlay.roundRect(0, yStart, CELL_SIZE, fillHeight, 4);
+    attackOverlay.fill({ color: 0xe53e3e, alpha: 0.5 });
   }
 
   /**
-   * Clear all attack warnings
+   * Set attack progress for a cell (for animation)
+   */
+  setAttackProgress(
+    cellId: string,
+    ticksRemaining: number,
+    ticksTotal: number,
+    gameSpeed: number
+  ): void {
+    const sprite = this.sprites.get(cellId);
+    if (!sprite) return;
+
+    // Progress increases as attack approaches (inverse of remaining)
+    const progress = 1 - ticksRemaining / ticksTotal;
+
+    sprite.attackTargetProgress = progress;
+    // Fill rate: complete the fill over the remaining time, adjusted for game speed
+    sprite.attackFillRate = (1 / ticksTotal) * gameSpeed;
+
+    // Show warning
+    sprite.attackWarning.visible = true;
+    sprite.attackWarning.text = `⚠️${ticksRemaining}`;
+  }
+
+  /**
+   * Clear attack progress for a cell
+   */
+  clearAttackProgress(cellId: string): void {
+    const sprite = this.sprites.get(cellId);
+    if (!sprite) return;
+
+    sprite.attackTargetProgress = 0;
+    sprite.attackDisplayedProgress = 0;
+    sprite.attackFillRate = 0;
+    sprite.attackWarning.visible = false;
+    sprite.attackOverlay.clear();
+  }
+
+  /**
+   * Clear all attack warnings and progress
    */
   clearAllAttackWarnings(): void {
     this.sprites.forEach((sprite) => {
       sprite.attackWarning.visible = false;
+      sprite.attackTargetProgress = 0;
+      sprite.attackDisplayedProgress = 0;
+      sprite.attackFillRate = 0;
+      sprite.attackOverlay.clear();
     });
   }
 
@@ -214,6 +298,10 @@ export class CellLayer {
    * Cleanup resources
    */
   destroy(): void {
+    if (this.tickerCallback) {
+      Ticker.shared.remove(this.tickerCallback);
+      this.tickerCallback = null;
+    }
     this.sprites.clear();
     this.container.removeChildren();
   }
